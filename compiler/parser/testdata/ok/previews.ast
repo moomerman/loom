@@ -1,0 +1,10 @@
+Component Button @1:11
+  Param label string @preview("Save", "Delete forever") @1:18
+  Param count int = 1 @preview(3, 20) @1:67
+  Param ratio float @preview(0.5) @1:98
+  Param variant :primary | :danger = :primary @1:125
+  Param inner_block slot @preview("<p>Some content</p>") @1:165
+  Param on:click event @1:215
+  Element <button> @3:1
+    Attr class={variant} @3:9
+    Interp label @3:25

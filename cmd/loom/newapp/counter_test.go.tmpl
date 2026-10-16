@@ -1,0 +1,37 @@
+package {{.Package}}
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/moomerman/loom"
+	"github.com/moomerman/loom/loomtest"
+)
+
+// loomtest.Mount runs the page the app serves at "/" as the server
+// does, without HTTP or a browser. Run `loom build` before `go test`: a
+// stale counter_hx.go still compiles.
+func TestCounter(t *testing.T) {
+	app := loom.New()
+	Setup(app)
+	p := loomtest.Mount(t, app, "/")
+	p.AssertHTML("output.count", 1)
+	p.AssertAccessible()
+
+	// Click acts on the markup as a user would: it finds the button and
+	// sends the event its on:click names.
+	p.Click(`button[aria-label="Increase"]`)
+	p.Click(`button[aria-label="Increase"]`)
+	p.Click(`button[aria-label="Decrease"]`)
+	if !strings.Contains(p.HTML(), ">1</output>") {
+		t.Errorf("after inc, inc, dec the count isn't 1:\n%s", p.HTML())
+	}
+
+	p.Click("button[on:click=reset]")
+	if !strings.Contains(p.HTML(), ">0</output>") {
+		t.Errorf("after reset the count isn't 0:\n%s", p.HTML())
+	}
+	if p.Title() != "Counter" {
+		t.Errorf("title = %q, want Counter", p.Title())
+	}
+}

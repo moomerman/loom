@@ -1,0 +1,92 @@
+# Tally's design tokens: every color, spacing, radius, font size, font and
+# shadow the app's styles use, including the names the starter kit's
+# components need. A warm neutral with one teal-green accent; "owed" and
+# "owe" are named colors so templates pick a class, never a raw value.
+
+[color]
+page        = { light = "#f6f5f2", dark = "#0f1112" }
+on-page     = { light = "#1c1d1f", dark = "#e6e7e8" }
+surface     = { light = "#ffffff", dark = "#17191b" }
+on-surface  = { light = "#1c1d1f", dark = "#e6e7e8" }
+sidebar     = { light = "#efede8", dark = "#0b0c0d" }
+on-sidebar  = { light = "#3a3c40", dark = "#c4c7cb" }
+subtle      = { light = "#f1efea", dark = "#212427" }
+on-subtle   = { light = "#2a2c2f", dark = "#e6e7e8" }
+hover       = { light = "#e8e5df", dark = "#1d2023" }
+selected    = { light = "#e1ded6", dark = "#25292c" }
+muted       = { light = "#63666b", dark = "#959a9f" }
+faint       = { light = "#9a9ca0", dark = "#5f6468" }
+line        = { light = "#e4e1da", dark = "#25282b" }
+line-strong = { light = "#d3cfc6", dark = "#33373b" }
+focus       = { light = "#0f8a6c", dark = "#3fd0a6" }
+accent      = { light = "#0d7a60", dark = "#3fd0a6" }
+on-accent   = { light = "#ffffff", dark = "#062a20" }
+accent-soft = { light = "#dcf1ea", dark = "#123329" }
+on-accent-soft = { light = "#0b5c48", dark = "#8de8c9" }
+danger      = { light = "#b93a32", dark = "#f2837a" }
+on-danger   = { light = "#ffffff", dark = "#2b0906" }
+success     = { light = "#1f7a4d", dark = "#5fd39a" }
+on-success  = { light = "#ffffff", dark = "#062014" }
+warning     = { light = "#fdf1d8", dark = "#3a2d10" }
+on-warning  = { light = "#5a3c00", dark = "#f5dc9f" }
+owed        = { light = "#127552", dark = "#4fd49c" }
+owe         = { light = "#b9472d", dark = "#f4906f" }
+backdrop    = { light = "rgb(28 26 22 / 0.32)", dark = "rgb(0 0 0 / 0.62)" }
+
+# Avatars and categories: data names one of these.
+red    = { light = "#e5484d", dark = "#f2555a" }
+orange = { light = "#e5701d", dark = "#ff8b3e" }
+amber  = { light = "#d29a0b", dark = "#f5bf2a" }
+green  = { light = "#2f9e63", dark = "#3dd68c" }
+teal   = { light = "#12a594", dark = "#0bd8b6" }
+sky    = { light = "#0c8ce9", dark = "#4cb6ff" }
+indigo = { light = "#3e63dd", dark = "#849dff" }
+violet = { light = "#6e56cf", dark = "#a18ff5" }
+pink   = { light = "#d6409f", dark = "#f17fc3" }
+slate  = { light = "#7c7f88", dark = "#9fa1ad" }
+
+[space]
+px = "1px"
+0-5 = "0.125rem"
+1 = "0.25rem"
+1-5 = "0.375rem"
+2 = "0.5rem"
+3 = "0.75rem"
+4 = "1rem"
+5 = "1.25rem"
+6 = "1.5rem"
+8 = "2rem"
+10 = "2.5rem"
+12 = "3rem"
+16 = "4rem"
+
+[radius]
+sm = "5px"
+md = "8px"
+lg = "12px"
+xl = "16px"
+full = "999px"
+
+[text]
+2xs = "0.5625rem"
+xs = "0.75rem"
+sm = "0.8125rem"
+md = "0.9375rem"
+lg = "1.125rem"
+xl = "1.375rem"
+2xl = "1.875rem"
+3xl = "2.5rem"
+4xl = "3.25rem"
+
+[font]
+body = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+mono = "ui-monospace, 'SF Mono', Menlo, monospace"
+display = "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif"
+
+[shadow]
+sm = "0 1px 2px rgb(20 18 14 / 0.06)"
+card = { light = "0 1px 2px rgb(20 18 14 / 0.05), 0 4px 16px rgb(20 18 14 / 0.04)", dark = "0 1px 2px rgb(0 0 0 / 0.4)" }
+lg = "0 18px 48px rgb(0 0 0 / 0.22)"
+
+[duration]
+fast = "150ms"

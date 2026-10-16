@@ -1,0 +1,83 @@
+# Design tokens for the dev mailbox: every color, spacing, radius and
+# font size its styles use, including the names the starter kit's
+# components in ui/ need. Colors with { light, dark } follow the system's
+# color scheme, or <html data-theme="light|dark">.
+#
+# The same quiet neutral with one indigo accent as jobsweb, so Loom's
+# built-in tools look like one family.
+
+[color]
+page        = { light = "#ffffff", dark = "#111113" }
+on-page     = { light = "#1b1c1f", dark = "#e4e5e9" }
+surface     = { light = "#ffffff", dark = "#18191c" }
+on-surface  = { light = "#1b1c1f", dark = "#e4e5e9" }
+sidebar     = { light = "#f6f6f8", dark = "#0c0c0e" }
+on-sidebar  = { light = "#3c3f46", dark = "#c9cbd1" }
+subtle      = { light = "#f4f4f6", dark = "#1d1e22" }
+on-subtle   = { light = "#1b1c1f", dark = "#e4e5e9" }
+hover       = { light = "#f3f3f5", dark = "#1d1e22" }
+selected    = { light = "#eaebf0", dark = "#26272d" }
+muted       = { light = "#6b6f76", dark = "#8b8f98" }
+faint       = { light = "#9da1a8", dark = "#62666e" }
+line        = { light = "#e6e6ea", dark = "#26272c" }
+line-strong = { light = "#d4d5da", dark = "#34363c" }
+focus       = { light = "#5e6ad2", dark = "#8a93ef" }
+accent      = { light = "#5763cf", dark = "#8a93ef" }
+on-accent   = { light = "#ffffff", dark = "#111113" }
+accent-soft    = { light = "#eef0fc", dark = "#1e2036" }
+on-accent-soft = { light = "#3a44a8", dark = "#c3c8f7" }
+danger      = { light = "#c52e2e", dark = "#f07575" }
+on-danger   = { light = "#ffffff", dark = "#111113" }
+danger-soft    = { light = "#fdf0f0", dark = "#2a1616" }
+on-danger-soft = { light = "#9b1f1f", dark = "#f6b4b4" }
+success     = { light = "#1d7a4b", dark = "#5cc792" }
+on-success  = { light = "#ffffff", dark = "#111113" }
+warning     = { light = "#fff4dc", dark = "#3a2f12" }
+on-warning  = { light = "#5b3d00", dark = "#f6dfa6" }
+code        = { light = "#f7f7f9", dark = "#141518" }
+on-code     = { light = "#2f3137", dark = "#c9cbd1" }
+backdrop    = { light = "rgb(20 20 30 / 0.28)", dark = "rgb(0 0 0 / 0.6)" }
+
+
+[space]
+px = "1px"
+1 = "0.25rem"
+1-5 = "0.375rem"
+2 = "0.5rem"
+3 = "0.75rem"
+4 = "1rem"
+5 = "1.25rem"
+6 = "1.5rem"
+7 = "1.75rem"
+8 = "2rem"
+10 = "2.5rem"
+12 = "3rem"
+
+[radius]
+sm = "4px"
+md = "6px"
+lg = "10px"
+full = "999px"
+
+[text]
+xs = "0.6875rem"
+sm = "0.75rem"
+code = "0.75rem"
+md = "0.8125rem"
+lg = "0.9375rem"
+xl = "1.125rem"
+title = "1.5rem"
+stat = "1.75rem"
+
+[font]
+body = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
+mono = 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace'
+
+[shadow]
+sm = "0 1px 2px rgb(0 0 0 / 0.06)"
+card = { light = "0 1px 2px rgb(0 0 0 / 0.04), 0 2px 8px rgb(0 0 0 / 0.03)", dark = "0 1px 2px rgb(0 0 0 / 0.4)" }
+lg = "0 16px 48px rgb(0 0 0 / 0.18), 0 2px 8px rgb(0 0 0 / 0.08)"
+
+[duration]
+fast = "120ms"
+pulse = "1.6s"

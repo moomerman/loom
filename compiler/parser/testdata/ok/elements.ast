@@ -1,0 +1,35 @@
+Component Elements @1:11
+  Param title string @1:20
+  Param disabled bool @1:34
+  Element <style> @16:1
+    Text "p { color: red }" @16:8
+  Text "<!DOCTYPE html>\n<!-- a comment with {braces} and <tags> -->\n" @3:1
+  Element <div> @5:1
+    Attr id="main" @5:6
+    Attr class="single" @5:16
+    Attr data-x={title} @5:31
+    Attr hidden @5:46
+    Text "\n  " @5:53
+    Element <br> void @6:3
+    Text "\n  " @6:7
+    Element <br> void @7:3
+    Text "\n  " @7:8
+    Element <img> void @8:3
+      Attr src="/a.png" @8:8
+      Attr alt={title} @8:21
+    Text "\n  " @8:35
+    Element <button> @9:3
+      Attr disabled={disabled} @9:11
+      Attr on:click="save" @9:31
+      Attr val-kind="draft" @9:47
+      Attr val-n={1} @9:64
+      Text "Save" @9:74
+    Text "\n  " @9:87
+    Element <div> @10:3
+    Text "\n  " @10:10
+    Element <my-element> @11:3
+      Attr some-attr="x" @11:15
+    Text "\n" @11:42
+  Text "\n" @12:7
+  Element <script> @13:1
+    Text "\n  if (a < b) { console.log(\"{not an expression}\") }\n" @13:9

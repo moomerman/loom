@@ -1,0 +1,25 @@
+# Design tokens for the hxtest templates.
+
+[color]
+accent     = { light = "#4f46e5", dark = "#a5b4fc" }
+on-accent  = { light = "#ffffff", dark = "#1e1b4b" }
+surface    = { light = "#ffffff", dark = "#18181b" }
+on-surface = { light = "#18181b", dark = "#f4f4f5" }
+
+[space]
+2 = "0.5rem"
+4 = "1rem"
+
+[radius]
+md = "6px"
+
+[text]
+lg = "1.25rem"
+
+[font]
+body = "system-ui, sans-serif"
+
+# A theme, for the previews' themes.
+[theme.brand.color]
+accent    = { light = "#b45309", dark = "#fbbf24" }
+on-accent = { light = "#ffffff", dark = "#1c1917" }

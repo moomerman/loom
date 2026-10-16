@@ -1,0 +1,65 @@
+---
+name: loom
+description: Use when building or changing this Loom app, for example adding a page, editing a .hx template or its Go file, styling, adding a migration or job, or debugging a page that renders wrong. Gives the edit, check, build, test and verify loop and which loom MCP tools to use at each step.
+---
+
+# Working on a Loom app
+
+Loom is new: don't guess its syntax or API. Read the docs, then let the
+checker correct you. The `loom` MCP server (`.mcp.json`, `loom mcp`)
+gives every tool below; each returns the JSON of `loom ... --json`.
+
+## 1. Learn before writing
+
+- `docs` tool (`loom docs TOPIC`): read `syntax` and `live` before your
+  first template; `layouts`, `components`, `data`, `jobs` when the task
+  touches them. With no topic it lists them in reading order.
+- `components`: the starter kit. Add one with `loom components add NAME`
+  rather than writing your own button, input or dialog.
+- `routes` and `manifest` (app running): what the app already has.
+- `db_schema` before writing SQL; `migrate_status` to see migrations.
+
+## 2. Edit
+
+A page is `name.go` (state, `Mount`, `Assigns`, `Events`) next to `name.hx` (its
+component), routed in `Setup` in `app.go`. Never edit `*_hx.go`.
+
+## 3. Check
+
+`check` tool (`loom check --json`). An empty list means every template
+is valid. Otherwise apply each diagnostic's `fix`; `docs` with topic
+`errors` explains each code. Repeat until clean.
+
+## 4. Build
+
+`build` tool (`loom build`): checks again and regenerates `*_hx.go`. Do
+this before any `go build` or `go test`: a stale `*_hx.go` still
+compiles. Add starter kit components with `components_add`. Apply new
+migrations with `migrate`.
+
+## 5. Test
+
+`test` tool (`loom test --json`: build, then `go test ./...`, with each
+failed test's output). Write page tests with `loomtest.Mount`,
+`p.Click(selector)`, `p.Submit(selector, fields)` and `p.AssertHTML(selector, n)`
+(`docs` topic `live`).
+
+## 6. Verify in the running app
+
+With `loom dev ./cmd/{{.Command}}` running (it rebuilds on save):
+
+- `dev_status` with `wait: true` after saving: whether the rebuild
+  worked, and the errors if not.
+- `recent_errors`: runtime errors with codes and fixes, from the server
+  and the browser. Check after every change.
+- `sessions`, then `inspect_session`: a page's assigns and HTML.
+- `send_event`: click or submit on an open page (`sid`, `event`,
+  `payload`) and get the new HTML and any errors back.
+- `render_component`: render a component with sample assigns.
+- `previews`, `preview_screenshot`: see what a component looks like,
+  light and dark.
+- `db_query`: read the data a page shows (read-only).
+- `jobs_list`, `queues`, `cron`: background jobs.
+
+Done means: `check` is clean, tests pass, and `recent_errors` is empty
+after using the page.

@@ -1,0 +1,116 @@
+<button type="button" class="button primary md l-778781" on:click="save" val-id="1">Save</button>
+
+<button type="button" class="button danger sm busy l-778781" disabled>Delete</button>
+
+<a href="/" class="link nav current l-9bf2a9" aria-current="page">Home</a>
+
+<label class="field l-e65538">
+  <span class="label hidden l-e65538">Email</span>
+  <input class="input invalid l-e65538" type="email" name="email" value="" placeholder="" aria-invalid="true">
+  
+  <span class="error l-e65538">Required</span>
+</label>
+
+<label class="field l-4646ff">
+  <span class="label l-4646ff">Size</span>
+  <select class="select l-4646ff" name="size" aria-invalid="false"><option>S</option></select>
+  
+  
+</label>
+
+<label class="checkbox l-c3d8fc">
+  <input type="checkbox" name="" value="true" checked class="l-c3d8fc">
+  <span class="l-c3d8fc">Done</span>
+</label>
+
+<label class="field l-1f7939">
+  <span class="label l-1f7939">Notes</span>
+  <textarea class="l-1f7939" name="notes" rows="4" placeholder="" aria-invalid="false">a &lt; b</textarea>
+  
+  
+</label>
+
+<label class="field l-e65538">
+  <span class="label l-e65538">Amount</span>
+  <input class="input invalid l-e65538" type="text" name="amount" value="x" placeholder="" aria-invalid="true">
+  
+  <span class="error l-e65538">Enter a number.</span>
+</label>
+
+<label class="field l-4646ff">
+  <span class="label l-4646ff">Who</span>
+  <select class="select invalid l-4646ff" name="who" aria-invalid="true"><option>Sam</option></select>
+  
+  <span class="error l-4646ff">Pick someone.</span>
+</label>
+
+<label class="checkbox l-c3d8fc">
+  <input type="checkbox" name="agree" value="true" checked class="l-c3d8fc">
+  <span class="l-c3d8fc">Agree</span>
+</label>
+
+<label class="field l-1f7939">
+  <span class="label l-1f7939">Notes</span>
+  <textarea class="invalid l-1f7939" name="notes" rows="0" placeholder="" aria-invalid="true">typed</textarea>
+  
+  <span class="error l-1f7939">Too long.</span>
+</label>
+
+<label class="field l-633e03">
+  <span class="label l-633e03">Name</span>
+  <input name="name">
+  
+  <span class="error l-633e03" role="alert">Too short</span>
+</label>
+
+<section class="card l-f989f7">
+  <h2 class="l-f989f7">Card</h2>
+  <p>Body</p>
+</section>
+
+<span class="badge accent l-fe96c3">3</span>
+
+<div class="alert danger l-40455a" role="alert">
+  <strong class="l-40455a">Oops</strong>
+  Try again.
+</div>
+
+<div class="backdrop l-2ffbf5">
+  <div data-loom-use="dialog-684260" class="dialog l-2ffbf5" role="dialog" aria-modal="true" aria-label="Delete?" tabindex="-1" on:close="close">
+    <header class="l-2ffbf5">
+      <h2 class="l-2ffbf5">Delete?</h2>
+      <button class="close l-2ffbf5" type="button" aria-label="Close" on:click="close">×</button>
+    </header>
+    <p>Sure?</p>
+    <div class="actions l-2ffbf5"><button>Yes</button></div>
+  </div>
+</div>
+
+
+
+<div class="dropdown l-e4df64">
+  <button class="trigger l-e4df64" type="button" aria-haspopup="listbox" aria-expanded="true" on:click="toggle">Fruit</button>
+  <ul data-loom-use="dropdown-e41e1c" data-loom-props="{&#34;open&#34;:true,&#34;value&#34;:&#34;pear&#34;}" class="menu l-e4df64" role="listbox" aria-label="Fruit" on:select="pick"><li class="option l-cc586d" role="option" data-value="pear">Pear</li></ul>
+</div>
+
+<div class="dropdown l-e4df64">
+  <button class="trigger l-e4df64" type="button" aria-haspopup="listbox" aria-expanded="false">Closed</button>
+  <ul data-loom-use="dropdown-e41e1c" data-loom-props="{&#34;open&#34;:false,&#34;value&#34;:&#34;&#34;}" class="menu l-e4df64" role="listbox" aria-label="Closed" hidden></ul>
+</div>
+
+<div class="table l-f7e640">
+  <table class="l-f7e640">
+    <caption class="l-f7e640">Jobs</caption>
+    <thead class="l-f7e640"><tr><th>ID</th></tr></thead>
+    <tbody class="l-f7e640"><tr><td>1</td></tr></tbody>
+  </table>
+</div>
+
+<div data-loom-use="tabs-9f4a52" class="tabs l-1987af" role="tablist" aria-label="Filter"><button type="button" role="tab" class="tab selected l-e2c7a5" aria-selected="true" tabindex="0" on:click="filter">All</button></div>
+
+<span role="status" class="l-3726a2"><span class="spinner md l-3726a2"></span><span class="hidden l-3726a2"></span></span>
+
+<div class="empty l-ed57ac">
+  <h2 class="l-ed57ac">Nothing here</h2>
+  <p>Add one.</p>
+</div>

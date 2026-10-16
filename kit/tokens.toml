@@ -1,0 +1,52 @@
+# The starter kit's design tokens. `loom components add` copies this file
+# next to the components directory when the app has no tokens.toml yet;
+# an app that has one needs these names (loom check lists any missing).
+
+[color]
+accent     = { light = "#4f46e5", dark = "#a5b4fc" }
+on-accent  = { light = "#ffffff", dark = "#1e1b4b" }
+surface    = { light = "#ffffff", dark = "#18181b" }
+on-surface = { light = "#18181b", dark = "#f4f4f5" }
+subtle     = { light = "#f4f4f5", dark = "#27272a" }
+on-subtle  = { light = "#27272a", dark = "#f4f4f5" }
+muted      = { light = "#52525b", dark = "#a1a1aa" }
+line       = { light = "#d4d4d8", dark = "#3f3f46" }
+focus      = { light = "#6366f1", dark = "#818cf8" }
+danger     = { light = "#b91c1c", dark = "#f87171" }
+on-danger  = { light = "#ffffff", dark = "#450a0a" }
+success    = { light = "#15803d", dark = "#4ade80" }
+on-success = { light = "#ffffff", dark = "#052e16" }
+warning    = { light = "#b45309", dark = "#fbbf24" }
+on-warning = { light = "#ffffff", dark = "#451a03" }
+backdrop   = { light = "rgb(0 0 0 / 0.4)", dark = "rgb(0 0 0 / 0.6)" }
+
+[space]
+1 = "0.25rem"
+2 = "0.5rem"
+3 = "0.75rem"
+4 = "1rem"
+6 = "1.5rem"
+8 = "2rem"
+
+[radius]
+sm = "4px"
+md = "6px"
+lg = "10px"
+full = "999px"
+
+[text]
+sm = "0.875rem"
+md = "1rem"
+lg = "1.25rem"
+xl = "1.5rem"
+
+[font]
+body = "system-ui, sans-serif"
+mono = "ui-monospace, monospace"
+
+[shadow]
+sm = "0 1px 2px rgb(0 0 0 / 0.1)"
+lg = "0 10px 30px rgb(0 0 0 / 0.25)"
+
+[duration]
+fast = "150ms"

@@ -1,0 +1,15 @@
+Component Board @1:11
+  Param columns [][]Card @1:17
+  Param empty bool @1:35
+  Element <div> @3:1
+    :if (! empty)
+    Text "\n  " @3:19
+    Element <ul> @4:3
+      :for col <- columns @4:13
+      Text "\n    " @4:29
+      Element <li> @5:5
+        :for card <- col @5:15
+        :key (. card id)
+        Interp (. card title) @5:43
+      Text "\n  " @5:60
+    Text "\n" @6:8

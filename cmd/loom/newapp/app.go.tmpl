@@ -1,0 +1,31 @@
+// Package {{.Package}} is the {{.Name}} app: its routes, pages and
+// templates. Each page is a Go file (state, Mount, Assigns, Events) next to the
+// .hx file it renders; `loom build` compiles the .hx files to *_hx.go.
+package {{.Package}}
+
+import (
+	"embed"
+	"io/fs"
+
+	"github.com/moomerman/loom"
+)
+
+// Setup adds the app's routes to app. main calls it with the real app,
+// and tests with their own.
+func Setup(app *loom.App) {
+	app.RootLayout(Root, func(c *loom.Ctx) RootAssigns {
+		return RootAssigns{Title: c.TitleOr("")}
+	})
+	app.Live("/", &CounterPage{}, Counter)
+}
+
+//go:embed migrations
+var migrations embed.FS
+
+// Migrations returns the app's migrations (migrations/, starting with
+// Loom's own tables), built into the binary so `{{.Command}} migrate`
+// applies them in production without the loom command.
+func Migrations() fs.FS {
+	m, _ := fs.Sub(migrations, "migrations")
+	return m
+}

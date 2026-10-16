@@ -1,0 +1,33 @@
+package {{.Package}}
+
+import "github.com/moomerman/loom"
+
+// CounterPage is a live page: a number the buttons change. The server
+// keeps the count; each click sends an event, its handler changes the
+// count, and the browser gets back a small diff. Each page load has its
+// own copy, owned by one goroutine, so it needs no locks.
+type CounterPage struct {
+	count int
+}
+
+// Mount runs once per page load, before the first render.
+func (p *CounterPage) Mount(c *loom.Ctx) {
+	c.Title("Counter")
+}
+
+// Assigns returns what counter.hx renders. It runs after Mount and after
+// every event; the browser gets only what changed.
+func (p *CounterPage) Assigns(c *loom.Ctx) CounterAssigns {
+	return CounterAssigns{Count: p.count}
+}
+
+// Events maps each event counter.hx sends (on:click="inc") to its
+// handler. An event the template sends with no handler here is an error
+// when the route is registered, so a typo fails at once.
+func (p *CounterPage) Events() loom.Events {
+	return loom.Events{
+		"inc":   func(c *loom.Ctx, _ loom.Payload) { p.count++ },
+		"dec":   func(c *loom.Ctx, _ loom.Payload) { p.count-- },
+		"reset": func(c *loom.Ctx, _ loom.Payload) { p.count = 0 },
+	}
+}

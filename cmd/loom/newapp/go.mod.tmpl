@@ -1,0 +1,19 @@
+module {{.Module}}
+
+go 1.25.0
+{{- if .LoomVersion}}
+
+require github.com/moomerman/loom {{.LoomVersion}}
+{{- end}}
+{{- if .LoomReqs}}
+
+require (
+{{- range .LoomReqs}}
+	{{.}} // indirect
+{{- end}}
+)
+{{- end}}
+{{- if .LoomDir}}
+
+replace github.com/moomerman/loom => {{.LoomDir}}
+{{- end}}

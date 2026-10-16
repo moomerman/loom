@@ -1,0 +1,28 @@
+Behavior dropdown @1:10
+  Param open bool @1:19
+  Param value string = "" @1:30
+  Emits select @1:56
+    Param value string @1:63
+  Emits close @1:78
+  Requires [role="listbox"] @1:94
+  Requires [aria-label] @1:108
+Behavior tabs @2:10
+  Requires [role="tablist"] @2:26
+Component Menu @4:11
+  Param open bool @4:16
+  Param value string @4:27
+  Element <ul> @6:1
+    use:dropdown {open: (|| open false), value: value} @6:39
+    Attr role="listbox" @6:5
+    Attr aria-label="Fruit" @6:20
+    Attr on:select="pick" @6:88
+    Attr on:close="close" @6:105
+    Text "\n  " @6:122
+    Element <li> @7:3
+      Attr role="option" @7:7
+      Text "Apple" @7:21
+    Text "\n" @7:31
+  Text "\n" @8:6
+  Element <div> @9:1
+    use:tabs {} @9:21
+    Attr role="tablist" @9:6

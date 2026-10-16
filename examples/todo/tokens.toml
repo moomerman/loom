@@ -1,0 +1,56 @@
+# Design tokens for the todo app: every color, spacing, radius, font size
+# and shadow its styles use, including the names the starter kit's
+# components in components/ need. Colors with { light, dark } follow the
+# system's color scheme, or <html data-theme="light|dark">.
+
+[color]
+page       = { light = "#f5f5f5", dark = "#121212" }
+accent     = { light = "#b83f45", dark = "#f08a8f" }
+on-accent  = { light = "#ffffff", dark = "#1f1f1f" }
+surface    = { light = "#ffffff", dark = "#1e1e1e" }
+on-surface = { light = "#1f1f1f", dark = "#e8e8e8" }
+subtle     = { light = "#f3f0ea", dark = "#2a2a2a" }
+on-subtle  = { light = "#1f1f1f", dark = "#e8e8e8" }
+muted      = { light = "#6b6b6b", dark = "#a3a3a3" }
+line       = { light = "#e5e5e5", dark = "#333333" }
+focus      = { light = "#b83f45", dark = "#f08a8f" }
+danger     = { light = "#b91c1c", dark = "#f87171" }
+on-danger  = { light = "#ffffff", dark = "#450a0a" }
+success    = { light = "#15803d", dark = "#4ade80" }
+on-success = { light = "#ffffff", dark = "#052e16" }
+warning    = { light = "#fff8e1", dark = "#3a3000" }
+on-warning = { light = "#1f1f1f", dark = "#fff3c4" }
+backdrop   = { light = "rgb(0 0 0 / 0.4)", dark = "rgb(0 0 0 / 0.6)" }
+
+[space]
+1 = "0.25rem"
+2 = "0.5rem"
+3 = "0.75rem"
+4 = "1rem"
+6 = "1.5rem"
+8 = "2rem"
+12 = "3rem"
+
+[radius]
+sm = "3px"
+md = "4px"
+lg = "6px"
+full = "999px"
+
+[text]
+sm = "0.875rem"
+md = "1rem"
+lg = "1.125rem"
+xl = "1.25rem"
+title = "2.5rem"
+
+[font]
+body = "system-ui, sans-serif"
+mono = "ui-monospace, monospace"
+
+[shadow]
+sm = "0 2px 8px rgb(0 0 0 / 0.15)"
+lg = "0 10px 30px rgb(0 0 0 / 0.25)"
+
+[duration]
+fast = "150ms"

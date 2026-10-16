@@ -1,0 +1,26 @@
+# The {{.Name}} app as one static binary (docs/deploy.md):
+#
+#   docker build -t {{.ModuleBase}} .
+#   docker run --rm -e DATABASE_URL=... {{.ModuleBase}} migrate   # before each rollout
+#   docker run -p 4000:4000 -e DATABASE_URL=... {{.ModuleBase}}
+#
+# Give the container a stop timeout of Config.DrainDelay plus twice
+# ShutdownGrace (15s by default) plus a few seconds, so it finishes its
+# work on SIGTERM.
+{{- if .LoomDir}}
+#
+# go.mod replaces Loom with a local checkout, which this build can't
+# see: require a released version of Loom before building the image.
+{{- end}}
+FROM golang:1.25 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -o /app ./cmd/{{.Command}}
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /app /app
+ENV PORT=4000
+EXPOSE 4000
+ENTRYPOINT ["/app"]

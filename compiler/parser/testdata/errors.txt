@@ -1,0 +1,278 @@
+Each case starts with a "-- name --" line, named after the error code it
+should produce. Text before the first case is ignored.
+
+-- LX101_stray_close_brace --
+component A()
+<p>total: 3}</p>
+-- LX102_unclosed_comment --
+component A()
+<!-- forgot to close
+<p>hi</p>
+-- LX103_unclosed_doctype --
+component A()
+<!DOCTYPE html
+-- LX104_close_tag_no_name --
+component A()
+<p>a </ b</p>
+-- LX104_close_tag_no_gt --
+component A()
+<p>hi</p
+-- LX105_open_tag_no_gt --
+component A()
+<p class="x"
+-- LX105_tag_runs_into_tag --
+component A()
+<div class="x" <span>hi</span></div>
+-- LX106_bad_char_in_tag --
+component A()
+<div class="x" = >hi</div>
+-- LX107_attr_no_value --
+component A()
+<div class=>hi</div>
+-- LX108_unclosed_attr_string --
+component A()
+<div class="x>hi</div>
+-- LX109_unquoted_attr --
+component A()
+<div class=main>hi</div>
+-- LX110_unclosed_brace --
+component A(name string)
+<p>{name</p>
+-- LX111_unclosed_script --
+component A()
+<script>alert(1)
+-- LX112_single_quotes --
+component A(done bool)
+<p>{if done, 'yes', 'no'}</p>
+-- LX113_single_ampersand --
+component A(a bool, b bool)
+<p :if={a & b}>x</p>
+-- LX113_elixir_if --
+component A(done bool)
+<p>{if done, do: "yes", else: "no"}</p>
+-- LX114_unclosed_string --
+component A()
+<p>{"hello
+}</p>
+-- LX115_bad_escape --
+component A()
+<p>{"a\qb"}</p>
+-- LX116_eex_tag --
+component A(name string)
+<p><%= name %></p>
+-- LX117_at_assign --
+component A(todos []Todo)
+<p>{len(@todos)}</p>
+-- PA201_markup_before_decl --
+<p>hello</p>
+component A()
+-- PA202_no_decl --
+
+-- PA203_unclosed_at_eof --
+component A()
+<section>
+  <p>hi</p>
+-- PA203_unclosed_before_next_component --
+component A()
+<div>
+component B()
+<p>b</p>
+-- PA204_duplicate_component --
+component A()
+<p>a</p>
+component A()
+<p>a again</p>
+-- PA205_pascal_case_call --
+component A()
+<.TodoItem />
+-- PA206_bad_slot_name --
+component A()
+<.card><:my-slot>x</:my-slot></.card>
+-- PA207_slot_outside_call --
+component A()
+<div><:left>x</:left></div>
+-- PA208_bad_tag_name --
+component A()
+<svg:rect></svg:rect>
+-- PA209_duplicate_attr --
+component A()
+<div class="a" id="x" class="b"></div>
+-- PA210_directive_on_slot --
+component A(items []Item)
+<.list><:item :for={i <- items}>{i.name}</:item></.list>
+-- PA211_if_with_string --
+component A(ok bool)
+<p :if="ok">x</p>
+-- PA212_unknown_directive --
+component A(items []Item)
+<p :each={i <- items}>x</p>
+-- PA212_else --
+component A(ok bool)
+<p :if={ok}>yes</p><p :else>no</p>
+-- PA213_event_bare --
+component A()
+<button on:click>Go</button>
+-- PA213_event_without_name --
+component A()
+<button on:="save">Go</button>
+-- PA214_key_without_for --
+component A(id string)
+<li :key={id}>x</li>
+-- PA215_void_close --
+component A()
+<input type="text"></input>
+-- PA216_stray_close --
+component A()
+<p>hi</p></div>
+-- PA217_close_outer_first --
+component A()
+<ul><li>one</ul>
+-- PA218_close_unknown --
+component A()
+<ul><li>one</span></li></ul>
+-- PA219_empty_expr --
+component A()
+<p>{}</p>
+-- PA220_assignment --
+component A(count int)
+<button :if={count = 0}>reset</button>
+-- PA221_trailing_tokens --
+component A(first string, last string)
+<p>{first last}</p>
+-- PA222_ends_early --
+component A(a int)
+<p>{a +}</p>
+-- PA223_expected_value --
+component A(a int)
+<p>{a + )}</p>
+-- PA223_list_literal --
+component A(busy bool)
+<p class={["btn", busy]}>x</p>
+-- PA224_arrow_outside_for --
+component A(items []Item)
+<p>{i <- items}</p>
+-- PA225_method_call --
+component A(user User)
+<p>{user.Name()}</p>
+-- PA226_unclosed_paren --
+component A(a int, b int)
+<p>{(a + b * 2}</p>
+-- PA226_unclosed_call --
+component A(a int, b int)
+<p>{max(a b)}</p>
+-- PA227_if_missing_else --
+component A(done bool)
+<p>{if done, "yes"}</p>
+-- PA228_for_missing_arrow --
+component A(items []Item)
+<li :for={i in items}>x</li>
+-- PA228_for_no_variable --
+component A(items []Item)
+<li :for={items}>x</li>
+-- PA229_decl_missing_parens --
+component TodoList
+<p>x</p>
+-- PA229_decl_missing_comma --
+component A(a int b int)
+<p>x</p>
+-- PA230_lowercase_component --
+component todo_list(todos []Todo)
+<p>x</p>
+-- PA231_duplicate_param --
+component A(a int, a string)
+<p>x</p>
+-- PA232_param_missing_type --
+component A(todos, filter string)
+<p>x</p>
+-- PA233_bad_type --
+component A(todos [Todo])
+<p>x</p>
+-- PA234_big_number --
+component A()
+<p>{99999999999999999999}</p>
+-- PA235_phx_click --
+component A()
+<button phx-click="save">Save</button>
+-- PA235_phx_value --
+component A(id string)
+<button on:click="del" phx-value-id={id}>Delete</button>
+-- PA236_key_attr --
+component A(items []Item)
+<li :for={i <- items} key={i.id}>x</li>
+-- PA237_elixir_concat --
+component A(id string)
+<a href={"/jobs/" <> id}>Job</a>
+-- PA238_colon_before_type --
+component A(label: string)
+<p>{label}</p>
+-- PA238_enum_without_colon --
+component A(size :sm | :md)
+<p>{size}</p>
+-- PA238_enum_value_twice --
+component A(size: :sm | :md | :sm)
+<p>{size}</p>
+-- PA238_default_not_literal --
+component A(label string = other)
+<p>{label}</p>
+-- PA238_event_default --
+component A(on:click event = "save")
+<button on:click>Go</button>
+-- PA238_event_wrong_type --
+component A(on:click string)
+<button on:click>Go</button>
+-- PA238_event_without_on --
+component A(click event)
+<button>Go</button>
+-- PA239_import_after_component --
+component A()
+<p>a</p>
+import "example.com/app/components"
+-- PA239_import_not_quoted --
+import example.com/app/components
+component A()
+<p>a</p>
+-- PA239_import_twice --
+import "example.com/app/components"
+import "example.com/app/components"
+component A()
+<p>a</p>
+-- PA240_behavior_markup --
+behavior menu(open bool)
+<p>menu</p>
+-- PA240_behavior_not_snake --
+behavior Menu(open bool)
+-- PA240_behavior_event_param --
+behavior menu(on:click event)
+-- PA240_behavior_emit_twice --
+behavior menu() emits (close, close)
+-- PA240_behavior_requires --
+behavior menu() requires role=menu
+-- PA240_behavior_twice --
+behavior menu()
+behavior menu()
+-- PA241_use_on_call --
+component A()
+<.b use:menu />
+-- PA241_use_string --
+component A()
+<ul use:menu="open"></ul>
+-- PA241_use_twice --
+component A()
+<ul use:menu use:list></ul>
+-- PA241_use_props --
+component A(open bool)
+<ul use:menu={open}></ul>
+-- PA242_preview_name --
+component A(label string @review("x"))
+<p>{label}</p>
+-- PA242_preview_not_literal --
+component A(label string @preview(label))
+<p>{label}</p>
+-- PA242_preview_unclosed --
+component A(label string @preview("a" "b"))
+<p>{label}</p>
+-- PA242_preview_twice --
+component A(label string @preview("a") @preview("b"))
+<p>{label}</p>
+-- PA242_preview_behavior --
+behavior menu(label string @preview("a"))

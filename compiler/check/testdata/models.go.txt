@@ -1,0 +1,23 @@
+package app
+
+import "time"
+
+type Todo struct {
+	ID        string
+	Title     string
+	Done      bool
+	Priority  int
+	CreatedAt time.Time
+	Tags      []string
+}
+
+type User struct {
+	Name  string
+	Todos []Todo
+}
+
+//loom:helper
+func Upper(s string) string { return s }
+
+//loom:helper
+func Add(a, b int) int { return a + b }

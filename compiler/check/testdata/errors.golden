@@ -1,0 +1,1025 @@
+== TC301_unknown_name
+a.hx:2:5: error TC301: unknown name todo
+  |
+2 | <p>{todo}</p>
+  |     ^^^^
+  = fix: did you mean todos?
+
+== TC301_unknown_name_no_suggestion
+a.hx:2:5: error TC301: unknown name zebra
+  |
+2 | <p>{zebra}</p>
+  |     ^^^^^
+  = fix: names in scope are the component's parameters and :for variables: todos
+
+== TC302_unknown_field
+a.hx:2:7: error TC302: Todo has no field titel
+  |
+2 | <p>{t.titel}</p>
+  |       ^^^^^
+  = fix: did you mean title? Todo's fields are: id, title, done, priority, created_at, tags
+
+== TC302_go_field_name
+a.hx:2:7: error TC302: Todo has no field Title
+  |
+2 | <p>{t.Title}</p>
+  |       ^^^^^
+  = fix: template field names are snake_case: write t.title
+
+== TC303_field_on_string
+a.hx:2:10: error TC303: name is string, which has no fields
+  |
+2 | <p>{name.length}</p>
+  |          ^^^^^^
+  = fix: only structs, forms and form fields have fields
+
+== TC304_unknown_type
+a.hx:1:15: error TC304: unknown type Task
+  |
+1 | component A(t Task)
+  |               ^^^^
+  = fix: types are string, int, float, bool, slot, or a struct declared in a .go file next to the template (package app)
+
+== TC304_go_float
+a.hx:1:19: error TC304: unknown type float64
+  |
+1 | component A(price float64)
+  |                   ^^^^^^^
+  = fix: template floats are written float
+
+== TC304_slot_list
+a.hx:1:19: error TC304: a list of slots isn't supported
+  |
+1 | component A(items []slot)
+  |                   ^^^^^^
+  = fix: declare a single slot parameter
+
+== TC305_string_plus_int
+a.hx:2:5: error TC305: + can't be applied to string and int
+  |
+2 | <p>{name + n}</p>
+  |     ^^^^^^^^
+  = fix: + adds two ints or two floats, or joins two strings; both sides must have the same type
+
+== TC305_and_on_list
+a.hx:2:9: error TC305: && can't be applied to []Todo and bool
+  |
+2 | <p :if={todos && ok}>x</p>
+  |         ^^^^^^^^^^^
+  = fix: && needs bools on both sides; compare explicitly, e.g. len(x) > 0
+
+== TC305_not_on_string
+a.hx:2:9: error TC305: ! can't be applied to name (string)
+  |
+2 | <p :if={!name}>x</p>
+  |         ^^^^^
+  = fix: ! needs a bool; - needs an int or float
+
+== TC306_if_not_bool
+a.hx:2:9: error TC306: :if needs a bool, but todos is []Todo
+  |
+2 | <p :if={todos}>none</p>
+  |         ^^^^^
+  = fix: templates don't treat values as true or false; compare explicitly, e.g. len(todos) > 0
+
+== TC306_inline_if_cond
+a.hx:2:8: error TC306: inline if needs a bool, but n is int
+  |
+2 | <p>{if n, "some", "none"}</p>
+  |        ^
+  = fix: templates don't treat values as true or false; compare explicitly, e.g. n > 0
+
+== TC307_branches_differ
+a.hx:2:5: error TC307: inline if branches have different types: string and int
+  |
+2 | <p>{if done, "yes", 0}</p>
+  |     ^^^^^^^^^^^^^^^^^
+  = fix: make both branches the same type
+
+== TC308_index_string
+a.hx:2:5: error TC308: name is string, which can't be indexed
+  |
+2 | <p>{name[0]}</p>
+  |     ^^^^^^^
+  = fix: only lists can be indexed, e.g. items[0]
+
+== TC308_index_not_int
+a.hx:2:11: error TC308: list index must be an int, but "a" is string
+  |
+2 | <p>{todos["a"].title}</p>
+  |           ^^^
+  = fix: index with an int, e.g. items[0]
+
+== TC309_for_over_struct
+a.hx:2:16: error TC309: :for needs a list, but user is User
+  |
+2 | <li :for={t <- user}>{t.title}</li>
+  |                ^^^^
+  = fix: loop over a list, e.g. :for={item <- items} where items is a []T parameter or field
+
+== TC310_unknown_helper
+a.hx:2:5: error TC310: unknown helper strings_to_upper
+  |
+2 | <p>{strings_to_upper(name)}</p>
+  |     ^^^^^^^^^^^^^^^^
+  = fix: templates can't call Go functions directly; declare a pure Go function StringsToUpper in this package with a //loom:helper comment, or compute the value in Go and pass it in
+
+== TC310_helper_typo
+a.hx:2:5: error TC310: unknown helper uper
+  |
+2 | <p>{uper(name)}</p>
+  |     ^^^^
+  = fix: did you mean upper?
+
+== TC311_arg_count
+a.hx:2:5: error TC311: add takes 2 arguments, but got 1
+  |
+2 | <p>{add(a)}</p>
+  |     ^^^^^^
+  = fix: call it as add(int, int) int
+
+== TC312_arg_type
+a.hx:2:9: error TC312: argument 1 of add must be int, but name is string
+  |
+2 | <p>{add(name, 1)}</p>
+  |         ^^^^
+  = fix: call it as add(int, int) int
+
+== TC313_render_list
+a.hx:2:5: error TC313: todos is a list ([]Todo) and can't be rendered as text
+  |
+2 | <p>{todos}</p>
+  |     ^^^^^
+  = fix: render each item with :for, e.g. <li :for={item <- todos}>...</li>
+
+== TC313_render_struct
+a.hx:2:5: error TC313: t is a Todo and can't be rendered as text
+  |
+2 | <p>{t}</p>
+  |     ^
+  = fix: render one of its fields: id, title, done, priority, created_at, tags
+
+== TC314_attr_list
+a.hx:2:11: error TC314: class takes strings, but todos is []Todo
+  |
+2 | <p class={todos}>x</p>
+  |           ^^^^^
+  = fix: list class names: class={"card" size if selected, "selected"}
+
+== TC314_attr_html
+a.hx:2:11: error TC314: attribute title can't take html
+  |
+2 | <p title={raw(bio)}>x</p>
+  |           ^^^^^^^^
+  = fix: attribute values are text; pass a string without raw()
+
+== TC315_unknown_component
+a.hx:2:1: error TC315: unknown component <.badge>
+  |
+2 | <.badge label="x" />
+  | ^^^^^^^
+  = fix: declare it in a .hx file in this package: component Badge(...), or import the package that has it
+
+== TC315_component_typo
+a.hx:2:1: error TC315: unknown component <.buton>
+  |
+2 | <.buton />
+  | ^^^^^^^
+  = fix: did you mean <.button>?
+
+== TC315_link
+a.hx:2:1: error TC315: unknown component <.link>
+  |
+2 | <.link navigate={"/"}>Home</.link>
+  | ^^^^^^
+  = fix: Loom has no built-in <.link>: write <a href={...}>, which navigates live to pages with the same root layout
+
+== TC316_navigate
+a.hx:2:8: error TC316: component Link has no parameter navigate
+  |
+2 | <.link navigate="/" label="Home" />
+  |        ^^^^^^^^
+  = fix: pass the URL as href: in Loom every link navigates live to pages with the same root layout
+a.hx:2:1: error TC317: <.link> is missing href
+  |
+2 | <.link navigate="/" label="Home" />
+  | ^^^^^^
+  = fix: pass every parameter without a default, e.g. href={...}
+
+== TC316_unknown_param
+a.hx:2:9: error TC316: component Badge has no parameter lable
+  |
+2 | <.badge lable="x" />
+  |         ^^^^^
+  = fix: did you mean label? Its parameters are: label
+a.hx:2:1: error TC317: <.badge> is missing label
+  |
+2 | <.badge lable="x" />
+  | ^^^^^^^
+  = fix: pass every parameter without a default, e.g. label={...}
+
+== TC317_missing_param
+a.hx:2:1: error TC317: <.badge> is missing label, count
+  |
+2 | <.badge />
+  | ^^^^^^^
+  = fix: pass every parameter without a default, e.g. label={...}
+
+== TC318_quoted_int
+a.hx:2:9: error TC318: count is int, but a quoted value is a string
+  |
+2 | <.badge count="3" />
+  |         ^^^^^
+  = fix: pass an expression in braces: count={...}
+
+== TC318_expr_type
+a.hx:2:16: error TC318: count is int, but t.title is string
+  |
+2 | <.badge count={t.title} />
+  |                ^^^^^^^
+  = fix: pass a value of type int
+
+== TC319_unknown_slot
+a.hx:2:8: error TC319: component Card has no slot footer
+  |
+2 | <.card><:footer>x</:footer></.card>
+  |        ^^^^^^^^
+  = fix: declare it in the signature (footer slot), or use one of its slots: header
+
+== TC319_no_inner_block
+a.hx:2:1: error TC319: component Card doesn't take inner content
+  |
+2 | <.card>content</.card>
+  | ^^^^^^
+  = fix: add an inner_block slot parameter to Card and render it with {render_slot(inner_block)}, or remove the content
+
+== TC320_slot_twice
+a.hx:2:28: error TC320: slot header is given twice
+  |
+2 | <.card><:header>a</:header><:header>b</:header></.card>
+  |                            ^^^^^^^^
+  = fix: pass all of the markup in a single <:header>
+
+== TC321_slot_attr
+a.hx:2:17: error TC321: named slots can't take attributes yet
+  |
+2 | <.card><:header class="big">a</:header></.card>
+  |                 ^^^^^
+  = fix: pass the value as a parameter of Card instead
+
+== TC322_unsupported_field
+a.hx:2:7: error TC322: field Todo.CreatedAt has Go type time.Time, which templates can't use
+  |
+2 | <p>{t.created_at}</p>
+  |       ^^^^^^^^^^
+  = fix: templates can use string, int, float64, bool, structs from this package and slices of those; add a field with a usable type, e.g. a formatted string
+
+== TC323_key_bool
+a.hx:2:29: error TC323: :key must be a string or int, but t.done is bool
+  |
+2 | <li :for={t <- todos} :key={t.done}>{t.title}</li>
+  |                             ^^^^^^
+  = fix: use a unique id field, e.g. :key={item.id}
+
+== TC324_slot_as_text
+a.hx:2:7: error TC324: header is a slot and can't be rendered directly
+  |
+2 | <div>{header}</div>
+  |       ^^^^^^
+  = fix: render it with {render_slot(header)}
+
+== TC324_slot_as_attr
+a.hx:2:8: error TC324: header is a slot, so it can't be passed as an attribute
+  |
+2 | <.card header="x" />
+  |        ^^^^^^
+  = fix: pass markup as <:header>...</:header> inside the call
+
+== TC325_duplicate_across_files
+b.hx:1:11: error TC325: component Button is also declared in a.hx
+  |
+1 | component Button()
+  |           ^^^^^^
+  = fix: component names must be unique within a package; rename one of them
+
+== TC326_helper_bad_param
+models.go:4:6: error TC326: helper Format has a parameter of type any, which templates can't pass
+  |
+4 | func Format(v any) string { return "" }
+  |      ^^^^^^
+  = fix: use parameters of type string, int, float64, bool, a struct from this package, or a slice of those
+
+== TC326_helper_two_results
+models.go:4:6: error TC326: helper Parse must return exactly one value
+  |
+4 | func Parse(s string) (int, error) { return 0, nil }
+  |      ^^^^^
+  = fix: helpers are pure functions from arguments to one result; move errors and side effects into Go code
+
+== TC326_helper_builtin_name
+models.go:4:6: error TC326: helper Len clashes with the builtin len
+  |
+4 | func Len(s string) int { return 0 }
+  |      ^^^
+  = fix: rename the Go function; builtins are len, raw, render_slot, path and asset
+
+== TC327_event_on_call
+a.hx:2:10: error TC327: component Button has no event parameter on:click
+  |
+2 | <.button on:click="save" />
+  |          ^^^^^^^^
+  = fix: declare on:click event in Button's signature and forward it with on:click={on_click} on an element inside it
+
+== TC328_shadowed_var
+a.hx:2:11: error TC328: t is already defined
+  |
+2 | <li :for={t <- todos}>{t.title}</li>
+  |           ^
+  = fix: pick another name for the :for variable, so each name means one thing
+a.hx:2:11: warning TC348: :for over Todo has no :key, so items are matched by position
+  |
+2 | <li :for={t <- todos}>{t.title}</li>
+  |           ^
+  = fix: add :key={t.id}
+
+== TC328_component_named_like_go_type
+a.hx:1:11: error TC328: component Todo generates the Go name Todo, which the package already declares as a type
+  |
+1 | component Todo(title string)
+  |           ^^^^
+  = fix: rename the component or the Go type; a component becomes a Go value Todo and a type TodoAssigns
+
+== TC329_root_without_loom_scripts
+a.hx:3:1: error TC329: root layout Root has no <.loom_scripts />
+  |
+3 | <html>
+  | ^^^^^
+  = fix: add <.loom_scripts /> at the end of <body>; without it the page is never live
+
+== TC330_root_without_inner_block
+a.hx:1:11: error TC330: root layout Root has no inner_block slot for the page
+  |
+1 | component Root(title string)
+  |           ^^^^
+  = fix: add inner_block slot to the signature and render {render_slot(inner_block)} inside <body>
+
+== TC330_root_never_renders_inner_block
+a.hx:3:1: error TC330: root layout Root never renders inner_block, so the page doesn't appear
+  |
+3 | <html>
+  | ^^^^^
+  = fix: add {render_slot(inner_block)} inside <body>
+
+== TC331_root_without_doctype
+a.hx:2:1: error TC331: root layout Root has no <!DOCTYPE html> before <html>
+  |
+2 | <html>
+  | ^^^^^
+  = fix: start the document with <!DOCTYPE html>, so browsers use standards mode
+
+== TC331_root_without_head_and_body
+a.hx:3:1: error TC331: root layout Root has no <head> inside <html>
+  |
+3 | <html>
+  | ^^^^^
+  = fix: add <head> with <meta charset="utf-8" /> and a <.live_title>, before <body>
+a.hx:3:1: error TC331: root layout Root has no <body> inside <html>
+  |
+3 | <html>
+  | ^^^^^
+  = fix: add <body>{render_slot(inner_block)} <.loom_scripts /></body> after </head>
+
+== TC332_live_title_unknown_attribute
+a.hx:4:50: error TC332: <.live_title> has no attribute defualt
+  |
+4 | <head><.live_meta /><.loom_styles /><.live_title defualt="App" suffix={1}>{title}</.live_title></head>
+  |                                                  ^^^^^^^
+  = fix: did you mean default? Its attributes are default, prefix and suffix
+a.hx:4:72: error TC332: suffix of <.live_title> must be a string, but 1 is int
+  |
+4 | <head><.live_meta /><.loom_styles /><.live_title defualt="App" suffix={1}>{title}</.live_title></head>
+  |                                                                        ^
+  = fix: pass a string
+
+== TC332_live_title_markup
+a.hx:4:64: error TC332: the content of <.live_title> must be text
+  |
+4 | <head><.live_meta /><.loom_styles /><.live_title default="App"><b>Todos</b></.live_title></head>
+  |                                                                ^
+  = fix: write the title as text and {expressions}, e.g. <.live_title default="Todos">{title}</.live_title>
+
+== TC332_loom_scripts_twice
+a.hx:5:33: error TC332: <.loom_scripts /> can't take :for, :if or :key
+  |
+5 | <body>{render_slot(inner_block)}<.loom_scripts :if={true} /><.loom_scripts defer>x</.loom_scripts></body>
+  |                                 ^^^^^^^^^^^^^^
+  = fix: remove the directive; <.loom_scripts /> always renders exactly once
+a.hx:5:61: error TC332: <.loom_scripts /> is used twice
+  |
+5 | <body>{render_slot(inner_block)}<.loom_scripts :if={true} /><.loom_scripts defer>x</.loom_scripts></body>
+  |                                                             ^^^^^^^^^^^^^^
+  = fix: a document has one; remove the second <.loom_scripts />
+a.hx:5:76: error TC332: <.loom_scripts /> takes no attributes
+  |
+5 | <body>{render_slot(inner_block)}<.loom_scripts :if={true} /><.loom_scripts defer>x</.loom_scripts></body>
+  |                                                                            ^^^^^
+  = fix: write <.loom_scripts />
+a.hx:5:61: error TC332: <.loom_scripts /> takes no content
+  |
+5 | <body>{render_slot(inner_block)}<.loom_scripts :if={true} /><.loom_scripts defer>x</.loom_scripts></body>
+  |                                                             ^^^^^^^^^^^^^^
+  = fix: write <.loom_scripts /> with nothing inside
+
+== TC333_live_title_outside_root
+a.hx:2:1: error TC333: <.live_title> can only be used in a root layout
+  |
+2 | <.live_title default="App">{title}</.live_title>
+  | ^^^^^^^^^^^^
+  = fix: a root layout is a component with a whole document (<!DOCTYPE html><html><head>...</head><body>...</body></html>); move <.live_title> into yours, see docs/layouts.md
+a.hx:3:1: error TC333: <.loom_scripts /> can only be used in a root layout
+  |
+3 | <.loom_scripts />
+  | ^^^^^^^^^^^^^^
+  = fix: a root layout is a component with a whole document (<!DOCTYPE html><html><head>...</head><body>...</body></html>); move <.loom_scripts /> into yours, see docs/layouts.md
+
+== TC334_reserved_component_name
+a.hx:1:11: error TC334: component name LiveTitle is taken by the builtin <.live_title>
+  |
+1 | component LiveTitle(title string)
+  |           ^^^^^^^^^
+  = fix: rename the component
+
+== TC335_path_without_slash
+a.hx:2:15: error TC335: path("jobs") must start with /: it is a path within the mount
+  |
+2 | <a href={path("jobs")}>Jobs</a>
+  |               ^^^^^^
+  = fix: write path("/jobs")
+
+== TC335_asset_absolute
+a.hx:2:36: error TC335: asset("/_assets/app.css") must name a file in the group's embedded assets, like "app.css"
+  |
+2 | <link rel="stylesheet" href={asset("/_assets/app.css")} />
+  |                                    ^^^^^^^^^^^^^^^^^^
+  = fix: write the file's name relative to the fs.FS given to loom.Assets, e.g. asset("app.css")
+
+== TC336_bare_absolute_href
+a.hx:2:4: warning TC336: href="/jobs" ignores the prefix this package is mounted at
+  |
+2 | <a href="/jobs">Jobs</a><img src="/_assets/logo.png" /><a href="https://example.com/">ok</a><script src="/_loom/loom.js"></script>
+  |    ^^^^^^^^^^^^
+  = fix: write href={path("/jobs")}, which resolves against the mount prefix
+a.hx:2:30: warning TC336: src="/_assets/logo.png" ignores the prefix this package is mounted at
+  |
+2 | <a href="/jobs">Jobs</a><img src="/_assets/logo.png" /><a href="https://example.com/">ok</a><script src="/_loom/loom.js"></script>
+  |                              ^^^^^^^^^^^^^^^^^^^^^^^
+  = fix: write src={asset("logo.png")}
+
+== TC354_root_without_live_meta
+a.hx:3:1: error TC354: root layout Root has no <.live_meta />
+  |
+3 | <html>
+  | ^^^^^
+  = fix: add <.live_meta /> inside <head>, after <.live_title>; it renders the description and link preview tags pages set with c.Meta
+
+== TC337_root_without_loom_styles
+a.hx:3:1: error TC337: root layout Root has no <.loom_styles />
+  |
+3 | <html>
+  | ^^^^^
+  = fix: add <.loom_styles /> inside <head>; it links the stylesheet of the components each page renders
+
+== TC338_unknown_enum_value
+a.hx:2:31: error TC338: "primry" isn't one of variant's values: :primary | :secondary
+  |
+2 | <.button label="Save" variant="primry" />
+  |                               ^^^^^^^^
+  = fix: did you mean "primary"?
+
+== TC338_enum_compare
+a.hx:2:17: error TC338: "lg" isn't one of :sm | :md
+  |
+2 | <p :if={size == "lg"}>big</p>
+  |                 ^^^^
+  = fix: did you mean "sm"?
+
+== TC338_string_to_enum
+a.hx:2:19: error TC338: v is a string, but variant takes one of :primary | :secondary
+  |
+2 | <.button variant={v} />
+  |                   ^
+  = fix: pass a value as written, e.g. variant="primary", or declare the parameter you pass from as an enum too
+
+== TC338_default_not_a_value
+a.hx:1:31: error TC338: "lg" isn't one of size's values: :sm | :md
+  |
+1 | component A(size: :sm | :md = :lg)
+  |                               ^^^
+  = fix: did you mean "sm"?
+
+== TC339_default_wrong_type
+a.hx:1:25: error TC339: the default of count must be an int
+  |
+1 | component A(count int = "none")
+  |                         ^^^^^^
+  = fix: write an int literal, e.g. 0
+
+== TC339_default_on_list
+a.hx:1:28: error TC339: todos is []Todo, which can't have a default
+  |
+1 | component A(todos []Todo = 0)
+  |                            ^
+  = fix: remove the default; a []Todo parameter is required, or optional only when it is a slot
+
+== TC340_forward_not_an_event
+a.hx:2:19: error TC340: on:click={...} forwards an event parameter, but name is string
+  |
+2 | <button on:click={name}>Go</button>
+  |                   ^^^^
+  = fix: name the server event in quotes, on:click="save", or declare on:click event in A's signature and write on:click={on_click}
+
+== TC340_val_without_event
+a.hx:2:19: error TC340: val-id is sent with an event, but component Badge has no event parameter
+  |
+2 | <.badge label="x" val-id={id} />
+  |                   ^^^^^^
+  = fix: declare one in Badge's signature, e.g. on:click event, and forward it with on:click={on_click} on an element
+
+== TC349_unknown_hint
+a.hx:2:39: error TC349: unknown hint optimistic:disable
+  |
+2 | <button on:click="delete" val-id={id} optimistic:disable>Delete</button>
+  |                                       ^^^^^^^^^^^^^^^^^^
+  = fix: did you mean optimistic:disabled? The hints are optimistic:class, optimistic:disabled and optimistic:hidden
+
+== TC349_unknown_hint_no_suggestion
+a.hx:2:27: error TC349: unknown hint optimistic:spin
+  |
+2 | <button on:click="delete" optimistic:spin>Delete</button>
+  |                           ^^^^^^^^^^^^^^^
+  = fix: the hints are optimistic:class="names", optimistic:disabled and optimistic:hidden
+
+== TC350_class_expression
+a.hx:2:43: error TC350: optimistic:class takes class names as a quoted string
+  |
+2 | <input type="checkbox" on:change="toggle" optimistic:class={if done, "", "done"} />
+  |                                           ^^^^^^^^^^^^^^^^
+  = fix: write e.g. optimistic:class="done"; hints are static, so the server's render, not an expression, decides what shows once the event is handled
+
+== TC350_class_bare
+a.hx:2:43: error TC350: optimistic:class takes class names as a quoted string
+  |
+2 | <input type="checkbox" on:change="toggle" optimistic:class />
+  |                                           ^^^^^^^^^^^^^^^^
+  = fix: write e.g. optimistic:class="done"; hints are static, so the server's render, not an expression, decides what shows once the event is handled
+
+== TC350_disabled_value
+a.hx:2:25: error TC350: optimistic:disabled takes no value
+  |
+2 | <button on:click="save" optimistic:disabled="true">Save</button>
+  |                         ^^^^^^^^^^^^^^^^^^^
+  = fix: write optimistic:disabled alone; it applies while the event is pending
+
+== TC351_hint_without_event
+a.hx:2:5: error TC351: optimistic:hidden is on a tag with no on:* event, so it never applies
+  |
+2 | <li optimistic:hidden>x</li>
+  |     ^^^^^^^^^^^^^^^^^
+  = fix: put it on the element or component call whose on:* event it anticipates, e.g. <button on:click="delete" optimistic:hidden>
+
+== TC351_hint_on_call_without_event
+a.hx:2:19: error TC351: optimistic:hidden is on a tag with no on:* event, so it never applies
+  |
+2 | <.badge label="x" optimistic:hidden />
+  |                   ^^^^^^^^^^^^^^^^^
+  = fix: put it on the element or component call whose on:* event it anticipates, e.g. <button on:click="delete" optimistic:hidden>
+
+== TC341_joined_class
+a.hx:2:16: error TC341: class names are listed, not joined with +
+  |
+2 | <button class={"btn-" + size}>x</button>
+  |                ^^^^^^^^^^^^^
+  = fix: list each class as a value, e.g. class={"btn" size}, and style the combination (.btn.sm) in the component's <style>
+
+== TC342_unknown_import
+a.hx:1:8: error TC342: can't find a template package at "example.com/app/missing"
+  |
+1 | import "example.com/app/missing"
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  = fix: import a directory of .hx files in this module by its full import path: the module path from go.mod, then the directory; loom components add creates components/
+
+== TC342_unused_import
+a.hx:1:8: error TC342: "example.com/app/components" is imported but none of its components or behaviors is used
+  |
+1 | import "example.com/app/components"
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = fix: remove the import
+
+== TC342_import_clash
+a.hx:1:8: error TC342: "example.com/app/components" exports component Button, which this package also declares
+  |
+1 | import "example.com/app/components"
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = fix: rename the local component Button; calls aren't qualified, so each name must mean one component
+
+== TC343_no_module
+a.hx:1:10: error TC343: behavior menu has no module: menu.js doesn't exist
+  |
+1 | behavior menu(open bool)
+  |          ^^^^
+  = fix: write menu.js next to a.hx, exporting function mount(el, props, emit) that returns {update, destroy}
+
+== TC343_no_mount
+a.hx:1:10: error TC343: menu.js doesn't export mount
+  |
+1 | behavior menu(open bool)
+  |          ^^^^
+  = fix: add export function mount(el, props, emit) { ...; return {update(props) {...}, destroy() {...}} }
+
+== TC343_prop_type
+a.hx:1:20: error TC343: todo is Todo, which a behavior can't take
+  |
+1 | behavior menu(todo Todo)
+  |                    ^^^^
+  = fix: props are sent to the browser as JSON: use string, int, float, bool, an enum, or a list of those
+
+== TC344_unknown_behavior
+a.hx:3:5: error TC344: unknown behavior mneu
+  |
+3 | <ul use:mneu={open: true}></ul>
+  |     ^^^^^^^^
+  = fix: did you mean use:menu?
+
+== TC344_unknown_prop
+a.hx:3:15: error TC344: behavior menu has no prop opn
+  |
+3 | <ul use:menu={opn: true}></ul>
+  |               ^^^
+  = fix: did you mean open? Its props are: open
+
+== TC344_missing_prop
+a.hx:3:5: error TC344: use:menu is missing open
+  |
+3 | <ul use:menu></ul>
+  |     ^^^^^^^^
+  = fix: pass every prop without a default: use:menu={open: ...}
+
+== TC344_prop_wrong_type
+a.hx:3:21: error TC344: prop open is bool, but n is int
+  |
+3 | <ul use:menu={open: n}></ul>
+  |                     ^
+  = fix: pass a value of type bool
+
+== TC345_requires_missing
+a.hx:3:5: error TC345: use:menu requires [role="listbox"], but <ul> has no role
+  |
+3 | <ul use:menu></ul>
+  |     ^^^^^^^^
+  = fix: add role="listbox" to the <ul>
+
+== TC345_requires_value
+a.hx:3:5: error TC345: use:menu requires [role="listbox"], but this is role="menu"
+  |
+3 | <ul role="menu" use:menu></ul>
+  |     ^^^^
+  = fix: write role="listbox", or use another behavior
+
+== TC346_not_emitted
+a.hx:3:14: error TC346: on:select isn't an event this element sends
+  |
+3 | <ul use:menu on:select="pick"></ul>
+  |              ^^^^^^^^^
+  = fix: the DOM events are click, change, input, submit, keydown, keyup, focus and blur; behavior menu emits close
+
+== TC346_no_behavior
+a.hx:2:6: error TC346: on:mouseover isn't an event this element sends
+  |
+2 | <div on:mouseover="hover"></div>
+  |      ^^^^^^^^^^^^
+  = fix: the DOM events are click, change, input, submit, keydown, keyup, focus and blur; other events come from a behavior, declared with emits (mouseover) and attached with use:
+
+== ST701_tokens_syntax
+tokens.toml:2:10: error ST701: the value of accent must be a quoted string
+  |
+2 | accent = #4f46e5
+  |          ^
+  = fix: write accent = "value", or { light = "...", dark = "..." } for a color with a dark value
+a.hx:2:19: error ST703: unknown token color.accent
+  |
+2 | <style>p { color: token(color.accent) }</style>
+  |                   ^^^^^^^^^^^^^^^^^^^
+  = fix: tokens.toml has no color tokens yet; add accent to its [color] group
+
+== ST701_token_outside_group
+tokens.toml:1:1: error ST701: token accent is not in a group
+  |
+1 | accent = "#4f46e5"
+  | ^^^^^^
+  = fix: put a group header such as [color] or [space] above it
+
+== ST702_token_not_a_color
+tokens.toml:2:1: error ST702: color.accent is "blueish", which is not a color
+  |
+2 | accent = "blueish"
+  | ^^^^^^
+  = fix: write a color as #rrggbb, rgb(...), hsl(...) or oklch(...), e.g. "#4f46e5"
+tokens.toml:4:1: error ST702: space.2 has a dark value, but only colors and shadows can
+  |
+4 | 2 = { light = "0.5rem", dark = "1rem" }
+  | ^
+  = fix: give space.2 one value
+
+== ST703_unknown_token
+a.hx:2:19: error ST703: unknown token color.acent
+  |
+2 | <style>p { color: token(color.acent); padding: token(space.3) }</style>
+  |                   ^^^^^^^^^^^^^^^^^^
+  = fix: did you mean token(color.accent)?
+a.hx:2:48: error ST703: unknown token space.3
+  |
+2 | <style>p { color: token(color.acent); padding: token(space.3) }</style>
+  |                                                ^^^^^^^^^^^^^^
+  = fix: the space tokens are token(space.1) (0.25rem), token(space.2) (0.5rem), token(space.4) (1rem); add space.3 to tokens.toml if it's missing
+
+== ST703_no_tokens_file
+a.hx:2:19: error ST703: token(color.accent) is used, but there is no tokens.toml
+  |
+2 | <style>p { color: token(color.accent) }</style>
+  |                   ^^^^^^^^^^^^^^^^^^^
+  = fix: create tokens.toml in the app (next to go.mod, or in this directory or a parent) with a [color] group defining accent
+
+== ST704_raw_values
+a.hx:3:23: error ST704: raw color #fff in background
+  |
+3 |   .card { background: #fff; padding: 12px; border-radius: 5px; font-size: 14px; box-shadow: 0 2px 4px black; }
+  |                       ^^^^
+  = fix: use a color token: token(color.on-accent) (#ffffff), token(color.surface) (#ffffff), token(color.accent) (#4f46e5); or add one to tokens.toml
+a.hx:3:38: error ST704: raw spacing 12px in padding
+  |
+3 |   .card { background: #fff; padding: 12px; border-radius: 5px; font-size: 14px; box-shadow: 0 2px 4px black; }
+  |                                      ^^^^
+  = fix: use a space token: token(space.2) (0.5rem), token(space.4) (1rem), token(space.1) (0.25rem); or add one to tokens.toml
+a.hx:3:59: error ST704: raw radius 5px in border-radius
+  |
+3 |   .card { background: #fff; padding: 12px; border-radius: 5px; font-size: 14px; box-shadow: 0 2px 4px black; }
+  |                                                           ^^^
+  = fix: use a radius token: token(radius.md) (6px); or add one to tokens.toml
+a.hx:3:75: error ST704: raw font size 14px in font-size
+  |
+3 |   .card { background: #fff; padding: 12px; border-radius: 5px; font-size: 14px; box-shadow: 0 2px 4px black; }
+  |                                                                           ^^^^
+  = fix: use a text token: token(text.sm) (0.875rem), token(text.md) (1rem); or add one to tokens.toml
+a.hx:3:93: error ST704: raw shadow 0 2px 4px black in box-shadow
+  |
+3 |   .card { background: #fff; padding: 12px; border-radius: 5px; font-size: 14px; box-shadow: 0 2px 4px black; }
+  |                                                                                             ^^^^^^^^^^^^^^^
+  = fix: use a shadow token: token(shadow.card) (0 1px 3px #0003); or add one to tokens.toml
+a.hx:4:20: error ST704: var(--color-accent) refers to a token directly
+  |
+4 |   .card a { color: var(--color-accent); border: 1px solid red; width: 50%; margin: 0 auto; }
+  |                    ^^^^^^^^^^^^^^^^^^^
+  = fix: write token(color.accent), so the compiler can check it
+a.hx:4:59: error ST704: raw color red in border
+  |
+4 |   .card a { color: var(--color-accent); border: 1px solid red; width: 50%; margin: 0 auto; }
+  |                                                           ^^^
+  = fix: use a color token: token(color.text) (#18181b), token(color.accent) (#4f46e5), token(color.on-accent) (#ffffff); or add one to tokens.toml
+
+== ST705_unsafe_style
+a.hx:2:1: warning ST705: unsafe style block in A: raw values aren't checked
+  |
+2 | <style unsafe>p { color: #b83f45; padding: 3px }</style>
+  | ^^^^^^^^^^^^^
+  = fix: replace raw colors, spacing, radii, font sizes and shadows with token(...) and remove unsafe
+
+== ST706_low_contrast
+tokens.toml:3:1: warning ST706: color.on-accent on color.accent has contrast 1.49:1 in dark mode, below the 4.5:1 WCAG AA needs for text
+  |
+3 | on-accent = "#ffffff"
+  | ^^^^^^^^^
+  = fix: make color.on-accent or color.accent lighter or darker until the ratio is at least 4.5:1
+
+== ST706_low_contrast_in_theme
+tokens.toml:5:1: warning ST706: color.on-accent on color.accent has contrast 1.23:1 in light mode in theme pale, below the 4.5:1 WCAG AA needs for text
+  |
+5 | accent = "#e0e7ff"
+  | ^^^^^^
+  = fix: make color.on-accent or color.accent lighter or darker until the ratio is at least 4.5:1
+
+== ST711_theme_unknown_token
+tokens.toml:4:1: error ST711: theme amiga overrides color.acent, which isn't a token
+  |
+4 | acent = "#ff8800"
+  | ^^^^^
+  = fix: did you mean accent? a theme overrides tokens declared outside it
+tokens.toml:5:2: error ST711: theme amiga overrides group [space], which has no tokens
+  |
+5 | [theme.amiga.space]
+  |  ^^^^^^^^^^^^^^^^^
+  = fix: a theme overrides tokens declared outside it; declare the group's tokens first, or use one of: color
+
+== ST711_theme_bad_name
+tokens.toml:3:2: error ST711: invalid theme name "dark"
+  |
+3 | [theme.dark.color]
+  |  ^^^^^^^^^^^^^^^^^
+  = fix: name a theme with lower-case letters, digits and '-', other than light and dark (the modes), e.g. [theme.amiga.color]
+
+== ST712_unknown_theme
+a.hx:2:6: error ST712: data-theme="amgia" names no theme
+  |
+2 | <div data-theme="amgia"><p data-theme="dark">x</p></div>
+  |      ^^^^^^^^^^^^^^^^^^
+  = fix: did you mean "amiga"? the themes are light, dark, amiga
+
+== ST712_theme_not_written_out
+a.hx:2:18: error ST712: data-theme takes theme names written out, but platform could be any string
+  |
+2 | <div data-theme={platform}><p data-theme={if platform == "c64", "c64", "amiga"}>x</p></div>
+  |                  ^^^^^^^^
+  = fix: choose between names with an inline if, e.g. data-theme={if t.platform == "amiga", "amiga", ""}, so each one is checked
+a.hx:2:65: error ST712: data-theme="c64" names no theme
+  |
+2 | <div data-theme={platform}><p data-theme={if platform == "c64", "c64", "amiga"}>x</p></div>
+  |                                                                 ^^^^^
+  = fix: use one of light, dark, amiga, or declare it in tokens.toml under [theme.c64.color]
+
+== ST707_style_nested
+a.hx:2:6: error ST707: <style> must be at the top level of component A
+  |
+2 | <div><style>p { color: token(color.text) }</style></div>
+  |      ^^^^^^
+  = fix: move it to the top level of the component, outside any element; its CSS is scoped to the component and linked by <.loom_styles /> in the root layout
+
+== ST707_style_attributes
+a.hx:2:8: error ST707: <style> takes no attribute scoped
+  |
+2 | <style scoped :if={true}>p { color: token(color.text) }</style>
+  |        ^^^^^^
+  = fix: the only attribute is unsafe, which allows raw values: <style unsafe>
+a.hx:2:1: error ST707: <style> can't take :for or :if
+  |
+2 | <style scoped :if={true}>p { color: token(color.text) }</style>
+  | ^^^^^^
+  = fix: a style block is static; style a state with a class, e.g. class={if done, "done", ""}
+a.hx:3:1: error ST707: component A has more than one <style> block
+  |
+3 | <style>a { color: token(color.text) }</style>
+  | ^^^^^^
+  = fix: merge them into one <style> block; the first is at line 2
+
+== ST708_css_syntax
+a.hx:2:37: error ST708: a rule is never closed
+  |
+2 | <style>p { color: token(color.text) </style>
+  |                                     ^
+  = fix: add the missing '}'
+
+== ST708_nested_rule
+a.hx:2:42: error ST708: nested rules aren't supported
+  |
+2 | <style>.card { color: token(color.text); a { color: token(color.accent) } }</style>
+  |                                          ^^^
+  = fix: move the rule out to the top level of the style block, with its full selector
+
+== ST708_import
+a.hx:2:8: error ST708: @import isn't supported in a component's style
+  |
+2 | <style>@import "base.css";</style>
+  |        ^^^^^^^
+  = fix: styles are per component; put shared styles in the component that renders the elements, or in the root layout
+
+== ST709_global_outside_root
+a.hx:2:8: error ST709: :global(...) can only be used in a root layout
+  |
+2 | <style>:global(body) p { color: token(color.text) }</style>
+  |        ^^^^^^^^^^^^^
+  = fix: style elements from the component that renders them; global styles for the document go in the root layout
+
+== ST710_wrong_token_group
+a.hx:2:21: error ST710: padding takes space tokens, not color.accent
+  |
+2 | <style>p { padding: token(color.accent); color: token(space.2) }</style>
+  |                     ^^^^^^^^^^^^^^^^^^^
+  = fix: use a space token, e.g. token(space.1)
+a.hx:2:49: error ST710: color takes color tokens, not space.2
+  |
+2 | <style>p { padding: token(color.accent); color: token(space.2) }</style>
+  |                                                 ^^^^^^^^^^^^^^
+  = fix: use a color token, e.g. token(color.accent)
+
+== TC347_preview_enum
+a.hx:1:44: error TC347: size is :sm | :md, so previews already show each of its values
+  |
+1 | component A(size: :sm | :md = :sm @preview("sm"))
+  |                                            ^
+  = fix: remove @preview from size
+
+== TC347_preview_bool
+a.hx:1:32: error TC347: busy is bool, so previews already show each of its values
+  |
+1 | component A(busy bool @preview(true))
+  |                                ^
+  = fix: remove @preview from busy
+
+== TC347_preview_list
+a.hx:1:37: error TC347: items is []string, which @preview can't give a value
+  |
+1 | component A(items []string @preview("a"))
+  |                                     ^
+  = fix: @preview takes strings, numbers and slot text; to preview a component that needs []string, wrap it in one that builds the value
+
+== TC347_preview_type
+a.hx:1:28: error TC347: the @preview values of n must be int literals
+  |
+1 | component A(n int @preview("one"), inner_block slot @preview(1))
+  |                            ^^^^^
+  = fix: write values like @preview(1, 20)
+a.hx:1:62: error TC347: the @preview values of inner_block must be markup (string) literals
+  |
+1 | component A(n int @preview("one"), inner_block slot @preview(1))
+  |                                                              ^
+  = fix: write values like @preview("<p>Some content</p>")
+
+== TC348_for_without_key
+a.hx:2:15: warning TC348: :for over Todo has no :key, so items are matched by position
+  |
+2 | <ul><li :for={t <- todos}>{t.title}<em :for={tag <- tags}>{tag}</em></li></ul>
+  |               ^
+  = fix: add :key={t.id}
+
+== TC353_inline_script
+a.hx:2:6: warning TC353: this inline <script> won't run: the Content-Security-Policy blocks inline script
+  |
+2 | <div><script>alert(1)</script><script type="application/json">{}</script><script src="/app.js"></script></div>
+  |      ^^^^^^^
+  = fix: move the code to a file the app serves and load it with <script src=...>, or write a behavior (use:name), see docs/components.md
+
+== TC353_inline_handler
+a.hx:2:9: warning TC353: the inline handler onclick won't run: the Content-Security-Policy blocks inline script
+  |
+2 | <button onclick="go()">Go</button>
+  |         ^^^^^^^
+  = fix: bind the event with on:click="name" and handle it in Go, or attach the code with a behavior (use:name), see docs/components.md
+
+== TC352_form_field_type
+a.hx:1:15: error TC352: field Signup.Born has Go type time.Time, which a form can't decode
+  |
+1 | component A(f form[Signup])
+  |               ^^^^^^^^^^^^
+  = fix: form fields are string, int, int64, float64, bool, map[string]string or map[string]bool; use a string and parse it in Validate
+
+== TC302_form_field
+a.hx:2:16: error TC302: form Signup has no field nmae
+  |
+2 | <input name={f.nmae.name} value={f.Name.value} />
+  |                ^^^^
+  = fix: did you mean name? the form's fields are Signup's exported fields: name, shares
+a.hx:2:36: error TC302: form Signup has no field Name
+  |
+2 | <input name={f.nmae.name} value={f.Name.value} />
+  |                                    ^^^^
+  = fix: template field names are snake_case: write f.name
+
+== TC304_form_input
+a.hx:1:15: error TC304: unknown type Singup in form[Singup]
+  |
+1 | component A(f form[Singup], g form, h string[Signup])
+  |               ^^^^^^^^^^^^
+  = fix: did you mean form[Signup]?
+a.hx:1:31: error TC304: form needs the struct it decodes to, in brackets
+  |
+1 | component A(f form[Singup], g form, h string[Signup])
+  |                               ^^^^
+  = fix: write form[SettleInput], naming a struct declared in a .go file next to the template
+a.hx:1:39: error TC304: string takes no type argument
+  |
+1 | component A(f form[Singup], g form, h string[Signup])
+  |                                       ^^^^^^^^^^^^^^
+  = fix: only form takes one, as in form[SettleInput]
+
+== TC314_form_field_attribute
+a.hx:2:14: error TC314: attribute name can't take a field
+  |
+2 | <input name={f.name} />
+  |              ^^^^^^
+  = fix: write name={f.name.name}, or pass the field to a kit input: <.input field={f.name} />
+a.hx:3:5: error TC313: f.shares is a map field and can't be rendered as text
+  |
+3 | <p>{f.shares}</p>
+  |     ^^^^^^^^
+  = fix: index the map field with a key: f.shares[key]
+
+== TC303_form_entries
+a.hx:2:23: error TC303: f.shares is a map field, which has an entry per key, not fields
+  |
+2 | <input name={f.shares.sam} value={f.shares[1].value} />
+  |                       ^^^
+  = fix: index it with a key: f.shares[sam]
+a.hx:2:44: error TC308: a map field's key must be a string, but 1 is int
+  |
+2 | <input name={f.shares.sam} value={f.shares[1].value} />
+  |                                            ^
+  = fix: index with a string, e.g. f.shares[person.id]
+

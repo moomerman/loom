@@ -1,0 +1,41 @@
+Component Footer @1:11
+  Param count int @1:18
+  Param left slot @1:29
+  Param inner_block slot @1:40
+  Element <footer> @3:1
+    Text "\n  " @3:9
+    Element <span> @4:3
+      Interp (call render_slot left) @4:9
+    Text "\n  " @4:35
+    Interp count @5:3
+    Text " " @5:10
+    Interp (call render_slot inner_block) @5:11
+    Text "\n" @5:37
+Component Page @8:11
+  Param items []Item @8:16
+  Call <.footer> @10:1
+    Attr count={(call len items)} @10:10
+    Slot <:left> @11:3
+      Text "Items" @11:10
+    Text "\n  " @10:29
+    Text "\n  left\n" @11:23
+  Text "\n" @13:11
+  Call <.footer> @14:1
+    Attr count={0} @14:10
+    Slot <:left> @15:3
+      Attr class="x" @15:10
+      Text "A" @15:20
+    Slot <:left> @16:3
+      Text "B" @16:10
+  Text "\n" @17:11
+  Call <.footer> @18:1
+    Attr count={1} @18:10
+  Text "\n" @18:22
+  Element <section> @19:1
+    :for i <- items @19:16
+    :key (. i id)
+    Text "\n  " @19:40
+    Call <.badge> @20:3
+      :if (. i new)
+      Attr label={(. i name)} @20:23
+    Text "\n" @20:40

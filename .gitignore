@@ -1,0 +1,4 @@
+/loom
+*.test
+/.claude/
+/.loom/

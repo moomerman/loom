@@ -1,0 +1,540 @@
+LX101_stray_close_brace.hx:2:12: error LX101: unexpected '}' in text
+  |
+2 | <p>total: 3}</p>
+  |            ^
+  = fix: there is no matching '{'; to show a literal brace write {"}"}
+
+LX102_unclosed_comment.hx:2:1: error LX102: HTML comment is never closed
+  |
+2 | <!-- forgot to close
+  | ^^^^
+  = fix: end the comment with -->
+
+LX103_unclosed_doctype.hx:2:1: error LX103: <! declaration is never closed
+  |
+2 | <!DOCTYPE html
+  | ^^
+  = fix: end it with '>', e.g. <!DOCTYPE html>
+
+LX104_close_tag_no_name.hx:2:6: error LX104: expected a tag name after '</'
+  |
+2 | <p>a </ b</p>
+  |      ^^
+  = fix: a closing tag looks like </div>; to show a literal '<' write {"<"}
+
+LX104_close_tag_no_gt.hx:2:6: error LX104: closing tag </p is missing its '>'
+  |
+2 | <p>hi</p
+  |      ^^^
+  = fix: end it with '>', e.g. </p>
+
+LX105_open_tag_no_gt.hx:2:1: error LX105: tag <p is missing its closing '>'
+  |
+2 | <p class="x"
+  | ^^
+  = fix: end the tag with > or />
+
+LX105_tag_runs_into_tag.hx:2:1: error LX105: tag <div is missing its closing '>'
+  |
+2 | <div class="x" <span>hi</span></div>
+  | ^^^^
+  = fix: end the tag with > or /> before starting another tag
+
+LX106_bad_char_in_tag.hx:2:16: error LX106: unexpected '=' inside tag <div>
+  |
+2 | <div class="x" = >hi</div>
+  |                ^
+  = fix: attributes look like name="text" or name={expression}
+
+LX107_attr_no_value.hx:2:6: error LX107: attribute class has '=' but no value
+  |
+2 | <div class=>hi</div>
+  |      ^^^^^^
+  = fix: give it a value, e.g. class="text" or class={expression}, or remove the '='
+
+LX108_unclosed_attr_string.hx:2:12: error LX108: the value of class is never closed
+  |
+2 | <div class="x>hi</div>
+  |            ^
+  = fix: add a closing "
+
+LX109_unquoted_attr.hx:2:12: error LX109: the value of class must be quoted or in braces
+  |
+2 | <div class=main>hi</div>
+  |            ^
+  = fix: write class="text" for a fixed value, or class={expression} for a dynamic one
+
+LX110_unclosed_brace.hx:2:4: error LX110: this '{' is never closed
+  |
+2 | <p>{name</p>
+  |    ^
+  = fix: every expression needs a closing '}'
+
+LX111_unclosed_script.hx:2:9: error LX111: <script> is never closed
+  |
+2 | <script>alert(1)
+  |         ^
+  = fix: add </script> after its contents
+
+LX112_single_quotes.hx:2:14: error LX112: strings use double quotes
+  |
+2 | <p>{if done, 'yes', 'no'}</p>
+  |              ^
+  = fix: write "text" instead of 'text'
+
+LX113_single_ampersand.hx:2:11: error LX113: unexpected '&' in expression
+  |
+2 | <p :if={a & b}>x</p>
+  |           ^
+  = fix: use && for logical and
+
+LX113_elixir_if.hx:2:16: error LX113: unexpected ':' in expression
+  |
+2 | <p>{if done, do: "yes", else: "no"}</p>
+  |                ^
+  = fix: inline if is written: if cond, "yes", "no" (no do: or else:)
+
+LX114_unclosed_string.hx:2:5: error LX114: string is never closed
+  |
+2 | <p>{"hello
+  |     ^^^^^^
+  = fix: add a closing " before the end of the line
+
+LX115_bad_escape.hx:2:7: error LX115: unknown escape sequence "\\q"
+  |
+2 | <p>{"a\qb"}</p>
+  |       ^^
+  = fix: supported escapes are \n, \t, \" and \\
+
+LX116_eex_tag.hx:2:4: error LX116: EEx tags like <%= ... %> aren't supported
+  |
+2 | <p><%= name %></p>
+  |    ^^^^^^^^^^^
+  = fix: write {expression} for a value; use :if and :for attributes for conditions and loops
+
+LX117_at_assign.hx:2:9: error LX117: assigns are referenced without '@'
+  |
+2 | <p>{len(@todos)}</p>
+  |         ^^^^^^
+  = fix: write todos instead of @todos
+
+PA201_markup_before_decl.hx:1:1: error PA201: markup must come after a component declaration
+  |
+1 | <p>hello</p>
+  | ^^
+  = fix: start the file with a signature, e.g. component TodoList(todos []Todo)
+
+PA202_no_decl.hx:1:1: error PA202: no component declaration found
+  |
+1 | 
+  | ^
+  = fix: start the file with a signature, e.g. component TodoList(todos []Todo)
+
+PA203_unclosed_at_eof.hx:2:1: error PA203: <section> is never closed
+  |
+2 | <section>
+  | ^^^^^^^^
+  = fix: add </section>; close it before the end of the file
+
+PA203_unclosed_before_next_component.hx:2:1: error PA203: <div> is never closed
+  |
+2 | <div>
+  | ^^^^
+  = fix: add </div>; close it before the next component, which starts on line 3
+
+PA204_duplicate_component.hx:3:11: error PA204: component A is declared twice
+  |
+3 | component A()
+  |           ^
+  = fix: the first declaration is at line 1
+
+PA205_pascal_case_call.hx:2:1: error PA205: invalid component name <.TodoItem>
+  |
+2 | <.TodoItem />
+  | ^^^^^^^^^^
+  = fix: call components by their snake_case name: <.todo_item> calls component TodoItem
+
+PA206_bad_slot_name.hx:2:8: error PA206: invalid slot name <:my-slot>
+  |
+2 | <.card><:my-slot>x</:my-slot></.card>
+  |        ^^^^^^^^^
+  = fix: a named slot looks like <:left>
+
+PA207_slot_outside_call.hx:2:6: error PA207: slot <:left> must be directly inside a component call
+  |
+2 | <div><:left>x</:left></div>
+  |      ^^^^^^
+  = fix: named slots pass markup to a component, e.g. <.footer><:left>Items</:left></.footer>
+
+PA208_bad_tag_name.hx:2:1: error PA208: invalid tag name <svg:rect>
+  |
+2 | <svg:rect></svg:rect>
+  | ^^^^^^^^^
+  = fix: HTML tag names use letters, digits and '-'
+
+PA209_duplicate_attr.hx:2:23: error PA209: attribute class is set twice on <div>
+  |
+2 | <div class="a" id="x" class="b"></div>
+  |                       ^^^^^
+  = fix: the first one is at 2:6
+
+PA210_directive_on_slot.hx:2:15: error PA210: :for can't be used on slot <:item>
+  |
+2 | <.list><:item :for={i <- items}>{i.name}</:item></.list>
+  |               ^^^^
+  = fix: put :for on the component call or on an element inside the slot instead
+
+PA211_if_with_string.hx:2:4: error PA211: :if takes an expression in braces
+  |
+2 | <p :if="ok">x</p>
+  |    ^^^^^^^^
+  = fix: write :if={condition}
+
+PA212_unknown_directive.hx:2:4: error PA212: unknown directive :each
+  |
+2 | <p :each={i <- items}>x</p>
+  |    ^^^^^
+  = fix: the supported directives are :for, :if and :key
+
+PA212_else.hx:2:23: error PA212: unknown directive :else
+  |
+2 | <p :if={ok}>yes</p><p :else>no</p>
+  |                       ^^^^^
+  = fix: Loom has no :else; put :if={!cond} on the other element, or pick between values with an inline if: {if cond, "yes", "no"}
+
+PA213_event_bare.hx:2:9: error PA213: on:click takes the name of a server event as a quoted string
+  |
+2 | <button on:click>Go</button>
+  |         ^^^^^^^^
+  = fix: e.g. on:click="toggle"; the payload goes in val-* attributes. In a component, on:click={on_click} forwards its on:click event parameter
+
+PA213_event_without_name.hx:2:9: error PA213: on: needs an event name
+  |
+2 | <button on:="save">Go</button>
+  |         ^^^^^^^^^^
+  = fix: write the DOM event after the colon, e.g. on:click="save"
+
+PA214_key_without_for.hx:2:5: error PA214: :key only applies to a tag with :for
+  |
+2 | <li :key={id}>x</li>
+  |     ^^^^^^^^^
+  = fix: :key identifies each item of a list; add :for={item <- list} or remove :key
+
+PA215_void_close.hx:2:20: error PA215: <input> is a void element and has no closing tag
+  |
+2 | <input type="text"></input>
+  |                    ^^^^^^^^
+  = fix: remove </input>; void elements can also be written <input />
+
+PA216_stray_close.hx:2:10: error PA216: </div> has no matching opening tag
+  |
+2 | <p>hi</p></div>
+  |          ^^^^^^
+  = fix: remove it, or add <div> before it
+
+PA217_close_outer_first.hx:2:12: error PA217: </ul> closes <ul>, but <li> inside it is still open
+  |
+2 | <ul><li>one</ul>
+  |            ^^^^^
+  = fix: add </li> first; <li> was opened at 2:5
+
+PA218_close_unknown.hx:2:12: error PA218: </span> doesn't match any open tag
+  |
+2 | <ul><li>one</span></li></ul>
+  |            ^^^^^^^
+  = fix: the innermost open tag is <li>, opened at 2:5
+
+PA219_empty_expr.hx:2:4: error PA219: empty expression
+  |
+2 | <p>{}</p>
+  |    ^^
+  = fix: put an expression between the braces, or remove them
+
+PA220_assignment.hx:2:20: error PA220: assignment isn't allowed in templates
+  |
+2 | <button :if={count = 0}>reset</button>
+  |                    ^
+  = fix: templates only read values; to compare, use ==
+
+PA221_trailing_tokens.hx:2:11: error PA221: unexpected 'last' after the end of the expression
+  |
+2 | <p>{first last}</p>
+  |           ^^^^
+  = fix: an expression is a single value; did you miss an operator?
+
+PA222_ends_early.hx:2:8: error PA222: expression ends too early
+  |
+2 | <p>{a +}</p>
+  |        ^
+  = fix: something is missing at the end, such as the right-hand side of an operator
+
+PA223_expected_value.hx:2:9: error PA223: unexpected ')'
+  |
+2 | <p>{a + )}</p>
+  |         ^
+  = fix: expected a value: a name, a number, a string, or '('
+
+PA223_list_literal.hx:2:11: error PA223: unexpected '[': templates have no list literals
+  |
+2 | <p class={["btn", busy]}>x</p>
+  |           ^
+  = fix: for classes, list the values separated by spaces, with an inline if for optional ones: class={"btn" if busy, "busy"}
+
+PA224_arrow_outside_for.hx:2:7: error PA224: '<-' can only be used in :for
+  |
+2 | <p>{i <- items}</p>
+  |       ^^
+  = fix: to repeat markup, put :for={item <- list} on the element to repeat
+
+PA225_method_call.hx:2:9: error PA225: only helpers can be called
+  |
+2 | <p>{user.Name()}</p>
+  |         ^^^^^^
+  = fix: templates can't call methods; compute the value in Go and pass it in, or register a helper like len(list)
+
+PA226_unclosed_paren.hx:2:15: error PA226: expected ')', found the end of the expression
+  |
+2 | <p>{(a + b * 2}</p>
+  |               ^
+  = fix: every '(' needs a matching ')'
+
+PA226_unclosed_call.hx:2:11: error PA226: expected ',' or ')' in the argument list, found 'b'
+  |
+2 | <p>{max(a b)}</p>
+  |           ^
+  = fix: separate arguments with commas and close the call with ')'
+
+PA227_if_missing_else.hx:2:19: error PA227: expected ',' and an else value, found the end of the expression
+  |
+2 | <p>{if done, "yes"}</p>
+  |                   ^
+  = fix: inline if has three parts: if condition, value_if_true, value_if_false
+
+PA228_for_missing_arrow.hx:2:13: error PA228: expected '<-' after the :for variable, found 'in'
+  |
+2 | <li :for={i in items}>x</li>
+  |             ^^
+  = fix: write :for={item <- list}
+
+PA228_for_no_variable.hx:2:16: error PA228: expected '<-' after the :for variable, found the end of the expression
+  |
+2 | <li :for={items}>x</li>
+  |                ^
+  = fix: write :for={item <- list}
+
+PA229_decl_missing_parens.hx:1:19: error PA229: expected '(' after the component name, found the end of the expression
+  |
+1 | component TodoList
+  |                   ^
+  = fix: a declaration looks like: component TodoList(todos []Todo, filter string)
+
+PA229_decl_missing_comma.hx:1:19: error PA229: expected ',' or ')' after parameter a, found 'b'
+  |
+1 | component A(a int b int)
+  |                   ^
+  = fix: a declaration looks like: component TodoList(todos []Todo, filter string)
+
+PA230_lowercase_component.hx:1:11: error PA230: component names start with an uppercase letter
+  |
+1 | component todo_list(todos []Todo)
+  |           ^^^^^^^^^
+  = fix: rename todo_list to TodoList
+
+PA231_duplicate_param.hx:1:20: error PA231: parameter a is declared twice
+  |
+1 | component A(a int, a string)
+  |                    ^
+  = fix: rename or remove one of them
+
+PA232_param_missing_type.hx:1:13: error PA232: parameter todos needs a type
+  |
+1 | component A(todos, filter string)
+  |             ^^^^^
+  = fix: write the type after the name, e.g. todos string or todos []Item
+
+PA233_bad_type.hx:1:20: error PA233: expected ']' in list type, found 'Todo'
+  |
+1 | component A(todos [Todo])
+  |                    ^^^^
+  = fix: a list type looks like []Todo
+
+PA234_big_number.hx:2:5: error PA234: number 99999999999999999999 is too large
+  |
+2 | <p>{99999999999999999999}</p>
+  |     ^^^^^^^^^^^^^^^^^^^^
+  = fix: integers must fit in 64 bits
+
+PA235_phx_click.hx:2:9: error PA235: phx-click is Phoenix LiveView syntax
+  |
+2 | <button phx-click="save">Save</button>
+  |         ^^^^^^^^^
+  = fix: events are bound with on:<dom event>, e.g. on:click="event_name"
+
+PA235_phx_value.hx:2:24: error PA235: phx-value-id is Phoenix LiveView syntax
+  |
+2 | <button on:click="del" phx-value-id={id}>Delete</button>
+  |                        ^^^^^^^^^^^^
+  = fix: event payload values are written val-id={...}
+
+PA236_key_attr.hx:2:23: error PA236: list keys are written :key, not key
+  |
+2 | <li :for={i <- items} key={i.id}>x</li>
+  |                       ^^^
+  = fix: rename key to :key
+
+PA237_elixir_concat.hx:2:19: error PA237: <> isn't an operator in Loom templates
+  |
+2 | <a href={"/jobs/" <> id}>Job</a>
+  |                   ^^
+  = fix: join strings with +, e.g. "/jobs/" + job.id
+
+PA238_colon_before_type.hx:1:18: error PA238: ':' after a parameter name starts an enum, like label: :a | :b
+  |
+1 | component A(label: string)
+  |                  ^
+  = fix: write label string without the colon; only enums are written name: :value | :value
+
+PA238_enum_without_colon.hx:1:18: error PA238: an enum parameter is written size: :a | :b
+  |
+1 | component A(size :sm | :md)
+  |                  ^
+  = fix: add a colon after the name: size: ...
+
+PA238_enum_value_twice.hx:1:31: error PA238: enum value :sm is listed twice
+  |
+1 | component A(size: :sm | :md | :sm)
+  |                               ^^^
+  = fix: remove one of them
+
+PA238_default_not_literal.hx:1:28: error PA238: a default must be a literal value
+  |
+1 | component A(label string = other)
+  |                            ^^^^^
+  = fix: write a string, number or bool, e.g. label string = ""; compute other values in Go
+
+PA238_event_default.hx:1:28: error PA238: event parameters have no default
+  |
+1 | component A(on:click event = "save")
+  |                            ^
+  = fix: remove the default; a call that leaves on:click out has no handler
+
+PA238_event_wrong_type.hx:1:22: error PA238: on:click is an event parameter, so its type is event
+  |
+1 | component A(on:click string)
+  |                      ^^^^^^
+  = fix: write on:click event
+
+PA238_event_without_on.hx:1:13: error PA238: an event parameter is named after the DOM event, like on:click
+  |
+1 | component A(click event)
+  |             ^^^^^
+  = fix: write on:click event (or on:change, on:submit, ...)
+
+PA239_import_after_component.hx:3:1: error PA239: imports must come before the first component
+  |
+3 | import "example.com/app/components"
+  | ^^^^^^
+  = fix: move this line to the top of the file
+
+PA239_import_not_quoted.hx:1:1: error PA239: an import is a quoted package path
+  |
+1 | import example.com/app/components
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = fix: write import "module/path/components" before the first component
+
+PA239_import_twice.hx:2:1: error PA239: "example.com/app/components" is imported twice
+  |
+2 | import "example.com/app/components"
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = fix: remove one of the imports
+
+PA240_behavior_markup.hx:2:1: error PA240: behavior menu has no markup; its code is in menu.js
+  |
+2 | <p>menu</p>
+  | ^^
+  = fix: put markup in a component, after a component declaration
+
+PA240_behavior_not_snake.hx:1:10: error PA240: behavior names are snake_case, as in use:menu
+  |
+1 | behavior Menu(open bool)
+  |          ^^^^
+  = fix: rename Menu to menu
+
+PA240_behavior_event_param.hx:1:15: error PA240: a behavior sends events with emits, not event parameters
+  |
+1 | behavior menu(on:click event)
+  |               ^^
+  = fix: list the events after the parameters: emits (select(value string), close)
+
+PA240_behavior_emit_twice.hx:1:31: error PA240: event close is listed twice
+  |
+1 | behavior menu() emits (close, close)
+  |                               ^^^^^
+  = fix: remove one of them
+
+PA240_behavior_requires.hx:1:26: error PA240: expected '[' in the requires list
+  |
+1 | behavior menu() requires role=menu
+  |                          ^
+  = fix: write attribute selectors, e.g. requires [role=listbox] or requires [role="dialog"][aria-label]
+
+PA240_behavior_twice.hx:2:10: error PA240: behavior menu is declared twice
+  |
+2 | behavior menu()
+  |          ^^^^
+  = fix: the first declaration is at line 1
+
+PA241_use_on_call.hx:2:5: error PA241: use: goes on an HTML element, not <.b>
+  |
+2 | <.b use:menu />
+  |     ^^^^^^^^
+  = fix: attach the behavior to an element inside the component's own markup
+
+PA241_use_string.hx:2:5: error PA241: use:menu takes props in braces, not a string
+  |
+2 | <ul use:menu="open"></ul>
+  |     ^^^^^^^^^^^^^^^
+  = fix: write use:menu={prop: value, ...}, or use:menu alone if it takes none
+
+PA241_use_twice.hx:2:14: error PA241: <ul> already uses menu; an element takes one behavior
+  |
+2 | <ul use:menu use:list></ul>
+  |              ^^^^^^^^
+  = fix: put the second behavior on a wrapping or inner element
+
+PA241_use_props.hx:2:19: error PA241: expected ':' after prop open, found the end of the expression
+  |
+2 | <ul use:menu={open}></ul>
+  |                   ^
+  = fix: write use:name={prop: value, ...}, e.g. use:dropdown={open: open, value: selected}
+
+PA242_preview_name.hx:1:26: error PA242: expected @preview after parameter label
+  |
+1 | component A(label string @review("x"))
+  |                          ^
+  = fix: write sample values after the type (and default): label string @preview("Save", "Delete")
+
+PA242_preview_not_literal.hx:1:35: error PA242: @preview values must be literals
+  |
+1 | component A(label string @preview(label))
+  |                                   ^^^^^
+  = fix: write strings, numbers or bools, e.g. @preview("Save", "Delete")
+
+PA242_preview_unclosed.hx:1:39: error PA242: expected ',' or ')' in @preview, found a string
+  |
+1 | component A(label string @preview("a" "b"))
+  |                                       ^^^
+  = fix: write sample values after the type (and default): label string @preview("Save", "Delete")
+
+PA242_preview_twice.hx:1:40: error PA242: parameter label has two @preview lists
+  |
+1 | component A(label string @preview("a") @preview("b"))
+  |                                        ^
+  = fix: put every sample value in one @preview(...)
+
+PA242_preview_behavior.hx:1:37: error PA242: behavior parameters take no @preview
+  |
+1 | behavior menu(label string @preview("a"))
+  |                                     ^
+  = fix: give sample values to the parameters of the component that uses the behavior
+

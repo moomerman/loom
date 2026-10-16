@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Everything but the browser tests, on the latest Go, with Postgres and
+  # S3 (MinIO) so no test skips. go vet's stdversion check catches use of
+  # standard library API newer than go.mod's minimum.
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: loom_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go vet ./...
+      - run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      # MinIO no longer publishes images, so it is built from source, at
+      # a pinned version.
+      - name: start MinIO, for the storage conformance suite on S3
+        run: |
+          go install github.com/minio/minio@v0.0.0-20260212201848-7aac2a2c5b7c
+          MINIO_ROOT_USER=loom MINIO_ROOT_PASSWORD=loom-secret nohup "$(go env GOPATH)/bin/minio" server "$RUNNER_TEMP/minio" --address 127.0.0.1:9000 > "$RUNNER_TEMP/minio.log" 2>&1 &
+      - name: all tests on Postgres and S3 (data layer, jobs and storage conformance suites, examples)
+        env:
+          LOOM_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/loom_test
+          LOOM_TEST_S3: http://loom:loom-secret@localhost:9000/loom-test
+        run: go test -race ./...
+      - name: fuzz the parser briefly
+        run: go test -run '^$' -fuzz=FuzzParse -fuzztime=30s ./compiler/parser
+
+  browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: loom_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: headless Chrome tests
+        working-directory: e2e
+        env:
+          LOOM_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/loom_test
+        run: LOOM_CHROME=$(which google-chrome) go test -v ./...

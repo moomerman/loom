@@ -1,0 +1,20 @@
+component Root(title string, inner_block slot)
+
+<style>
+  :global(body) { margin: 0; font-family: token(font.body); font-size: token(text.md); background: token(color.page); color: token(color.on-page); }
+</style>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <.live_title default="{{.Name}}">{title}</.live_title>
+  <.live_meta />
+  <.loom_styles />
+</head>
+<body>
+  {render_slot(inner_block)}
+  <.loom_scripts />
+</body>
+</html>

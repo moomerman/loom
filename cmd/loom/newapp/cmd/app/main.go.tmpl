@@ -1,0 +1,33 @@
+// Command {{.Command}} runs the {{.Name}} app on :4000 (or $PORT). In
+// development, run `loom dev ./cmd/{{.Command}}` instead: it rebuilds and
+// reloads on every change.
+//
+// DATABASE_URL is optional: without it the app has no database and keeps
+// background jobs in memory. With it, apply migrations before starting:
+// `{{.Command}} migrate` (the same as `loom migrate`, with the migrations
+// built in; `loom dev` applies them itself). See docs/deploy.md.
+package main
+
+import (
+	"log"
+	"os"
+
+	"github.com/moomerman/loom"
+
+	{{if ne .Package .ModuleBase}}{{.Package}} {{end}}"{{.Module}}"
+)
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		os.Exit(loom.MigrateCommand({{.Package}}.Migrations(), os.Args[2:], os.Stdout, os.Stderr))
+	}
+	addr := ":4000"
+	if port := os.Getenv("PORT"); port != "" {
+		addr = ":" + port
+	}
+	app := loom.New(loom.Config{DB: os.Getenv("DATABASE_URL"), Secret: os.Getenv("LOOM_SECRET")})
+	{{.Package}}.Setup(app)
+	if err := app.Run(addr); err != nil { // nil after a graceful shutdown
+		log.Fatal(err)
+	}
+}

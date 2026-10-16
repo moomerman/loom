@@ -1,0 +1,645 @@
+Type checking error cases. Each case starts with "-- name --" and is named
+after the first error code it must produce. A case is one template, a.hx,
+unless it has "== file ==" lines, which start separate files. Every case
+also gets models.go.txt as models.go unless it provides its own.
+
+-- TC301_unknown_name --
+component A(todos []Todo)
+<p>{todo}</p>
+-- TC301_unknown_name_no_suggestion --
+component A(todos []Todo)
+<p>{zebra}</p>
+-- TC302_unknown_field --
+component A(t Todo)
+<p>{t.titel}</p>
+-- TC302_go_field_name --
+component A(t Todo)
+<p>{t.Title}</p>
+-- TC303_field_on_string --
+component A(name string)
+<p>{name.length}</p>
+-- TC304_unknown_type --
+component A(t Task)
+<p>x</p>
+-- TC304_go_float --
+component A(price float64)
+<p>{price}</p>
+-- TC304_slot_list --
+component A(items []slot)
+<p>x</p>
+-- TC305_string_plus_int --
+component A(name string, n int)
+<p>{name + n}</p>
+-- TC305_and_on_list --
+component A(todos []Todo, ok bool)
+<p :if={todos && ok}>x</p>
+-- TC305_not_on_string --
+component A(name string)
+<p :if={!name}>x</p>
+-- TC306_if_not_bool --
+component A(todos []Todo)
+<p :if={todos}>none</p>
+-- TC306_inline_if_cond --
+component A(n int)
+<p>{if n, "some", "none"}</p>
+-- TC307_branches_differ --
+component A(done bool)
+<p>{if done, "yes", 0}</p>
+-- TC308_index_string --
+component A(name string)
+<p>{name[0]}</p>
+-- TC308_index_not_int --
+component A(todos []Todo)
+<p>{todos["a"].title}</p>
+-- TC309_for_over_struct --
+component A(user User)
+<li :for={t <- user}>{t.title}</li>
+-- TC310_unknown_helper --
+component A(name string)
+<p>{strings_to_upper(name)}</p>
+-- TC310_helper_typo --
+component A(name string)
+<p>{uper(name)}</p>
+-- TC311_arg_count --
+component A(a int)
+<p>{add(a)}</p>
+-- TC312_arg_type --
+component A(name string)
+<p>{add(name, 1)}</p>
+-- TC313_render_list --
+component A(todos []Todo)
+<p>{todos}</p>
+-- TC313_render_struct --
+component A(t Todo)
+<p>{t}</p>
+-- TC314_attr_list --
+component A(todos []Todo)
+<p class={todos}>x</p>
+-- TC314_attr_html --
+component A(bio string)
+<p title={raw(bio)}>x</p>
+-- TC315_unknown_component --
+component A()
+<.badge label="x" />
+-- TC315_component_typo --
+component A()
+<.buton />
+
+component Button()
+<button>x</button>
+-- TC315_link --
+component A()
+<.link navigate={"/"}>Home</.link>
+-- TC316_navigate --
+component A()
+<.link navigate="/" label="Home" />
+
+component Link(href string, label string)
+<a href={href}>{label}</a>
+-- TC316_unknown_param --
+component A()
+<.badge lable="x" />
+
+component Badge(label string)
+<span>{label}</span>
+-- TC317_missing_param --
+component A()
+<.badge />
+
+component Badge(label string, count int)
+<span>{label} {count}</span>
+-- TC318_quoted_int --
+component A()
+<.badge count="3" />
+
+component Badge(count int)
+<span>{count}</span>
+-- TC318_expr_type --
+component A(t Todo)
+<.badge count={t.title} />
+
+component Badge(count int)
+<span>{count}</span>
+-- TC319_unknown_slot --
+component A()
+<.card><:footer>x</:footer></.card>
+
+component Card(header slot)
+<div>{render_slot(header)}</div>
+-- TC319_no_inner_block --
+component A()
+<.card>content</.card>
+
+component Card(header slot)
+<div>{render_slot(header)}</div>
+-- TC320_slot_twice --
+component A()
+<.card><:header>a</:header><:header>b</:header></.card>
+
+component Card(header slot)
+<div>{render_slot(header)}</div>
+-- TC321_slot_attr --
+component A()
+<.card><:header class="big">a</:header></.card>
+
+component Card(header slot)
+<div>{render_slot(header)}</div>
+-- TC322_unsupported_field --
+component A(t Todo)
+<p>{t.created_at}</p>
+-- TC323_key_bool --
+component A(todos []Todo)
+<li :for={t <- todos} :key={t.done}>{t.title}</li>
+-- TC324_slot_as_text --
+component Card(header slot)
+<div>{header}</div>
+-- TC324_slot_as_attr --
+component A()
+<.card header="x" />
+
+component Card(header slot)
+<div>{render_slot(header)}</div>
+-- TC325_duplicate_across_files --
+== a.hx ==
+component Button()
+<button>a</button>
+== b.hx ==
+component Button()
+<button>b</button>
+-- TC326_helper_bad_param --
+== models.go ==
+package app
+
+//loom:helper
+func Format(v any) string { return "" }
+== a.hx ==
+component A()
+<p>x</p>
+-- TC326_helper_two_results --
+== models.go ==
+package app
+
+//loom:helper
+func Parse(s string) (int, error) { return 0, nil }
+== a.hx ==
+component A()
+<p>x</p>
+-- TC326_helper_builtin_name --
+== models.go ==
+package app
+
+//loom:helper
+func Len(s string) int { return 0 }
+== a.hx ==
+component A()
+<p>x</p>
+-- TC327_event_on_call --
+component A()
+<.button on:click="save" />
+
+component Button()
+<button>x</button>
+-- TC328_shadowed_var --
+component A(t Todo, todos []Todo)
+<li :for={t <- todos}>{t.title}</li>
+-- TC328_component_named_like_go_type --
+component Todo(title string)
+<p>{title}</p>
+-- TC329_root_without_loom_scripts --
+component Root(inner_block slot)
+<!DOCTYPE html>
+<html>
+<head><.live_meta /><.loom_styles /><title>App</title></head>
+<body>{render_slot(inner_block)}</body>
+</html>
+-- TC330_root_without_inner_block --
+component Root(title string)
+<!DOCTYPE html>
+<html>
+<head><.live_meta /><.loom_styles /><.live_title>{title}</.live_title></head>
+<body><.loom_scripts /></body>
+</html>
+-- TC330_root_never_renders_inner_block --
+component Root(inner_block slot)
+<!DOCTYPE html>
+<html>
+<head><.live_meta /><.loom_styles /></head>
+<body><main></main><.loom_scripts /></body>
+</html>
+-- TC331_root_without_doctype --
+component Root(inner_block slot)
+<html>
+<head><.live_meta /><.loom_styles /></head>
+<body>{render_slot(inner_block)}<.loom_scripts /></body>
+</html>
+-- TC331_root_without_head_and_body --
+component Root(inner_block slot)
+<!DOCTYPE html>
+<html>
+  {render_slot(inner_block)}
+  <.live_meta /><.loom_styles /><.loom_scripts />
+</html>
+-- TC332_live_title_unknown_attribute --
+component Root(title string, inner_block slot)
+<!DOCTYPE html>
+<html>
+<head><.live_meta /><.loom_styles /><.live_title defualt="App" suffix={1}>{title}</.live_title></head>
+<body>{render_slot(inner_block)}<.loom_scripts /></body>
+</html>
+-- TC332_live_title_markup --
+component Root(inner_block slot)
+<!DOCTYPE html>
+<html>
+<head><.live_meta /><.loom_styles /><.live_title default="App"><b>Todos</b></.live_title></head>
+<body>{render_slot(inner_block)}<.loom_scripts /></body>
+</html>
+-- TC332_loom_scripts_twice --
+component Root(inner_block slot)
+<!DOCTYPE html>
+<html>
+<head><.live_meta /><.loom_styles /></head>
+<body>{render_slot(inner_block)}<.loom_scripts :if={true} /><.loom_scripts defer>x</.loom_scripts></body>
+</html>
+-- TC333_live_title_outside_root --
+component Page(title string)
+<.live_title default="App">{title}</.live_title>
+<.loom_scripts />
+-- TC334_reserved_component_name --
+component LiveTitle(title string)
+<p>{title}</p>
+-- TC335_path_without_slash --
+component Nav()
+<a href={path("jobs")}>Jobs</a>
+-- TC335_asset_absolute --
+component Head()
+<link rel="stylesheet" href={asset("/_assets/app.css")} />
+-- TC336_bare_absolute_href --
+component Nav()
+<a href="/jobs">Jobs</a><img src="/_assets/logo.png" /><a href="https://example.com/">ok</a><script src="/_loom/loom.js"></script>
+== models.go ==
+// Package jobsui is a reusable package of templates.
+//
+//loom:package
+package jobsui
+-- TC354_root_without_live_meta --
+component Root(inner_block slot)
+<!DOCTYPE html>
+<html>
+<head><.loom_styles /><title>App</title></head>
+<body>{render_slot(inner_block)}<.loom_scripts /></body>
+</html>
+-- TC337_root_without_loom_styles --
+component Root(inner_block slot)
+<!DOCTYPE html>
+<html>
+<head><.live_meta /><title>App</title></head>
+<body>{render_slot(inner_block)}<.loom_scripts /></body>
+</html>
+-- TC338_unknown_enum_value --
+component A()
+<.button label="Save" variant="primry" />
+
+component Button(label string, variant: :primary | :secondary = :primary)
+<button class={variant}>{label}</button>
+-- TC338_enum_compare --
+component A(size: :sm | :md)
+<p :if={size == "lg"}>big</p>
+-- TC338_string_to_enum --
+component A(v string)
+<.button variant={v} />
+
+component Button(variant: :primary | :secondary = :primary)
+<button class={variant}>x</button>
+-- TC338_default_not_a_value --
+component A(size: :sm | :md = :lg)
+<p class={size}>x</p>
+-- TC339_default_wrong_type --
+component A(count int = "none")
+<p>{count}</p>
+-- TC339_default_on_list --
+component A(todos []Todo = 0)
+<p>{len(todos)}</p>
+-- TC340_forward_not_an_event --
+component A(name string)
+<button on:click={name}>Go</button>
+-- TC340_val_without_event --
+component A(id string)
+<.badge label="x" val-id={id} />
+
+component Badge(label string)
+<span>{label}</span>
+-- TC349_unknown_hint --
+component A(id string)
+<button on:click="delete" val-id={id} optimistic:disable>Delete</button>
+-- TC349_unknown_hint_no_suggestion --
+component A()
+<button on:click="delete" optimistic:spin>Delete</button>
+-- TC350_class_expression --
+component A(done bool)
+<input type="checkbox" on:change="toggle" optimistic:class={if done, "", "done"} />
+-- TC350_class_bare --
+component A()
+<input type="checkbox" on:change="toggle" optimistic:class />
+-- TC350_disabled_value --
+component A()
+<button on:click="save" optimistic:disabled="true">Save</button>
+-- TC351_hint_without_event --
+component A()
+<li optimistic:hidden>x</li>
+-- TC351_hint_on_call_without_event --
+component A(id string)
+<.badge label="x" optimistic:hidden />
+
+component Badge(label string, on:click event)
+<span on:click={on_click}>{label}</span>
+-- TC341_joined_class --
+component A(size: :sm | :md)
+<button class={"btn-" + size}>x</button>
+-- TC342_unknown_import --
+== go.mod ==
+module example.com/app
+== a.hx ==
+import "example.com/app/missing"
+component A()
+<p>x</p>
+-- TC342_unused_import --
+== go.mod ==
+module example.com/app
+== components/button.hx ==
+component Button(label string)
+<button>{label}</button>
+== a.hx ==
+import "example.com/app/components"
+component A()
+<p>x</p>
+-- TC342_import_clash --
+== go.mod ==
+module example.com/app
+== components/button.hx ==
+component Button(label string)
+<button>{label}</button>
+== a.hx ==
+import "example.com/app/components"
+component A()
+<.button label="x" />
+
+component Button(label string)
+<button>{label}</button>
+-- TC343_no_module --
+behavior menu(open bool)
+component A()
+<ul role="menu" use:menu={open: true}></ul>
+-- TC343_no_mount --
+== menu.js ==
+export function start(el) {}
+== a.hx ==
+behavior menu(open bool)
+component A()
+<ul role="menu" use:menu={open: true}></ul>
+-- TC343_prop_type --
+== menu.js ==
+export function mount(el, props, emit) {}
+== a.hx ==
+behavior menu(todo Todo)
+-- TC344_unknown_behavior --
+== menu.js ==
+export function mount(el, props, emit) {}
+== a.hx ==
+behavior menu(open bool)
+component A()
+<ul use:mneu={open: true}></ul>
+-- TC344_unknown_prop --
+== menu.js ==
+export function mount(el, props, emit) {}
+== a.hx ==
+behavior menu(open bool)
+component A()
+<ul use:menu={opn: true}></ul>
+-- TC344_missing_prop --
+== menu.js ==
+export function mount(el, props, emit) {}
+== a.hx ==
+behavior menu(open bool, value string = "")
+component A()
+<ul use:menu></ul>
+-- TC344_prop_wrong_type --
+== menu.js ==
+export function mount(el, props, emit) {}
+== a.hx ==
+behavior menu(open bool)
+component A(n int)
+<ul use:menu={open: n}></ul>
+-- TC345_requires_missing --
+== menu.js ==
+export function mount(el, props, emit) {}
+== a.hx ==
+behavior menu() requires [role=listbox]
+component A()
+<ul use:menu></ul>
+-- TC345_requires_value --
+== menu.js ==
+export function mount(el, props, emit) {}
+== a.hx ==
+behavior menu() requires [role=listbox]
+component A()
+<ul role="menu" use:menu></ul>
+-- TC346_not_emitted --
+== menu.js ==
+export function mount(el, props, emit) {}
+== a.hx ==
+behavior menu() emits (close)
+component A()
+<ul use:menu on:select="pick"></ul>
+-- TC346_no_behavior --
+component A()
+<div on:mouseover="hover"></div>
+-- ST701_tokens_syntax --
+component A()
+<style>p { color: token(color.accent) }</style>
+<p>x</p>
+== tokens.toml ==
+[color]
+accent = #4f46e5
+-- ST701_token_outside_group --
+component A()
+<p>x</p>
+== tokens.toml ==
+accent = "#4f46e5"
+-- ST702_token_not_a_color --
+component A()
+<p>x</p>
+== tokens.toml ==
+[color]
+accent = "blueish"
+[space]
+2 = { light = "0.5rem", dark = "1rem" }
+-- ST703_unknown_token --
+component A()
+<style>p { color: token(color.acent); padding: token(space.3) }</style>
+<p>x</p>
+-- ST703_no_tokens_file --
+component A()
+<style>p { color: token(color.accent) }</style>
+<p>x</p>
+== tokens.toml ==
+-- ST704_raw_values --
+component A()
+<style>
+  .card { background: #fff; padding: 12px; border-radius: 5px; font-size: 14px; box-shadow: 0 2px 4px black; }
+  .card a { color: var(--color-accent); border: 1px solid red; width: 50%; margin: 0 auto; }
+</style>
+<div class="card"><a href="/">x</a></div>
+-- ST705_unsafe_style --
+component A()
+<style unsafe>p { color: #b83f45; padding: 3px }</style>
+<p>x</p>
+-- ST706_low_contrast --
+component A()
+<p>x</p>
+== tokens.toml ==
+[color]
+accent = { light = "#4f46e5", dark = "#c7d2fe" }
+on-accent = "#ffffff"
+-- ST706_low_contrast_in_theme --
+component A()
+<p>x</p>
+== tokens.toml ==
+[color]
+accent = "#4f46e5"
+on-accent = "#ffffff"
+[theme.pale.color]
+accent = "#e0e7ff"
+-- ST711_theme_unknown_token --
+component A()
+<p>x</p>
+== tokens.toml ==
+[color]
+accent = "#4f46e5"
+[theme.amiga.color]
+acent = "#ff8800"
+[theme.amiga.space]
+2 = "1rem"
+-- ST711_theme_bad_name --
+component A()
+<p>x</p>
+== tokens.toml ==
+[color]
+accent = "#4f46e5"
+[theme.dark.color]
+accent = "#000000"
+-- ST712_unknown_theme --
+component A()
+<div data-theme="amgia"><p data-theme="dark">x</p></div>
+== tokens.toml ==
+[color]
+accent = "#4f46e5"
+[theme.amiga.color]
+accent = "#ff8800"
+-- ST712_theme_not_written_out --
+component A(platform string)
+<div data-theme={platform}><p data-theme={if platform == "c64", "c64", "amiga"}>x</p></div>
+== tokens.toml ==
+[color]
+accent = "#4f46e5"
+[theme.amiga.color]
+accent = "#ff8800"
+-- ST707_style_nested --
+component A()
+<div><style>p { color: token(color.text) }</style></div>
+-- ST707_style_attributes --
+component A()
+<style scoped :if={true}>p { color: token(color.text) }</style>
+<style>a { color: token(color.text) }</style>
+<p>x</p>
+-- ST708_css_syntax --
+component A()
+<style>p { color: token(color.text) </style>
+<p>x</p>
+-- ST708_nested_rule --
+component A()
+<style>.card { color: token(color.text); a { color: token(color.accent) } }</style>
+<p>x</p>
+-- ST708_import --
+component A()
+<style>@import "base.css";</style>
+<p>x</p>
+-- ST709_global_outside_root --
+component A()
+<style>:global(body) p { color: token(color.text) }</style>
+<p>x</p>
+-- ST710_wrong_token_group --
+component A()
+<style>p { padding: token(color.accent); color: token(space.2) }</style>
+<p>x</p>
+-- TC347_preview_enum --
+component A(size: :sm | :md = :sm @preview("sm"))
+<p class={size}>a</p>
+-- TC347_preview_bool --
+component A(busy bool @preview(true))
+<p :if={busy}>a</p>
+-- TC347_preview_list --
+component A(items []string @preview("a"))
+<p :for={i <- items}>{i}</p>
+-- TC347_preview_type --
+component A(n int @preview("one"), inner_block slot @preview(1))
+<p>{n}{render_slot(inner_block)}</p>
+-- TC348_for_without_key --
+component A(todos []Todo, tags []string)
+<ul><li :for={t <- todos}>{t.title}<em :for={tag <- tags}>{tag}</em></li></ul>
+-- TC353_inline_script --
+component A()
+<div><script>alert(1)</script><script type="application/json">{}</script><script src="/app.js"></script></div>
+-- TC353_inline_handler --
+component A()
+<button onclick="go()">Go</button>
+-- TC352_form_field_type --
+component A(f form[Signup])
+<input name={f.name.name} />
+== models.go ==
+package app
+
+import "time"
+
+type Signup struct {
+	Name string
+	Born time.Time
+}
+-- TC302_form_field --
+component A(f form[Signup])
+<input name={f.nmae.name} value={f.Name.value} />
+== models.go ==
+package app
+
+type Signup struct {
+	Name   string
+	Shares map[string]string
+	secret string
+}
+-- TC304_form_input --
+component A(f form[Singup], g form, h string[Signup])
+<p>x</p>
+== models.go ==
+package app
+
+type Signup struct{ Name string }
+-- TC314_form_field_attribute --
+component A(f form[Signup])
+<input name={f.name} />
+<p>{f.shares}</p>
+== models.go ==
+package app
+
+type Signup struct {
+	Name   string
+	Shares map[string]string
+}
+-- TC303_form_entries --
+component A(f form[Signup])
+<input name={f.shares.sam} value={f.shares[1].value} />
+== models.go ==
+package app
+
+type Signup struct {
+	Name   string
+	Shares map[string]string
+}

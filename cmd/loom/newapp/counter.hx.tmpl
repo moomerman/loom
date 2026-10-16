@@ -1,0 +1,18 @@
+component Counter(count int @preview(0, 42))
+
+<style>
+  .counter { margin: token(space.12) auto; text-align: center; }
+  .count { display: block; margin: token(space.6) 0; font-size: token(text.xl); }
+  .buttons { display: flex; gap: token(space.2); justify-content: center; }
+  button { padding: token(space.2) token(space.4); border: none; border-radius: token(radius.md); background: token(color.accent); color: token(color.on-accent); font-size: token(text.md); cursor: pointer; }
+</style>
+
+<section class="counter">
+  <h1>Counter</h1>
+  <output class="count">{count}</output>
+  <div class="buttons">
+    <button on:click="dec" aria-label="Decrease">-</button>
+    <button on:click="reset">Reset</button>
+    <button on:click="inc" aria-label="Increase">+</button>
+  </div>
+</section>

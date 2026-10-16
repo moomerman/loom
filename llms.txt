@@ -1,0 +1,55 @@
+# Loom
+
+> An agent-first web framework in Go with HEEx-like templates (.hx
+> files) and live server rendering over SSE with minimal diffs.
+
+## One page model
+
+A page is a Go value with `Mount`, `Assigns` and `Events`:
+`app.Live(path, &Page{}, Component)`. The server holds its state and
+renders; every event is a round trip, and the browser gets a small
+diff. `loom.Watch("todos")` on a route re-renders its pages when a
+tracked table changes, on any node. Events survive a server restart
+(the browser resends them, the server runs each once, the page remounts
+keeping form input), and `optimistic:disabled` or
+`optimistic:class="done"` beside an `on:*` give feedback while one is
+on its way. State that belongs in the URL (filters, tabs) is read by
+`HandleParams` and changed with `c.Patch`, without a page load. See docs/live.md. jobsweb, examples/todo and
+examples/issues are all Live pages.
+
+Read in this order:
+
+- [AGENTS.md](AGENTS.md): how to work on this repo
+- [docs/getting-started.md](docs/getting-started.md): start a new app with `loom new`: the files it makes, the agent files, the loop
+- [docs/syntax.md](docs/syntax.md): the complete template language
+- [docs/live.md](docs/live.md): live pages in Go: Mount, Assigns, Events, watching tables, restarts, hints, loomtest
+- [docs/forms.md](docs/forms.md): forms: a typed input struct, validation, per-field errors, change and submit, names checked at every seam
+- [docs/example-jobsweb.md](docs/example-jobsweb.md): the reference example, a mountable jobs dashboard, file by file
+- [docs/example-issues.md](docs/example-issues.md): a Linear-style issue tracker: sign-in, a live layout's state, menus, keyboard shortcuts, live updates across users
+- [docs/example-tally.md](docs/example-tally.md): a shared-expenses app built from the docs alone: watched tables, a form the server computes, restart-safe input, cron
+- [docs/layouts.md](docs/layouts.md): root layouts, app layouts, live layouts with their own state and events (kept across live navigation), route groups, titles, page metadata
+- [docs/components.md](docs/components.md): design tokens, scoped styles, variants, the starter kit
+- [docs/data.md](docs/data.md): the database: Select/Get, transactions, AfterCommit, migrations, loomtest.DB
+- [docs/auth.md](docs/auth.md): sign-in: the auth sub-app (passwords, email links, resets, Google and GitHub, two-factor), mail, requiring a user, the typed user, sessions, CSRF, testing
+- [docs/subapps.md](docs/subapps.md): auth checks, middleware, dev-only groups, mounting sub-apps, their migrations, path and asset
+- [docs/jobs.md](docs/jobs.md): background jobs: enqueue, retries, cron, testing
+- [docs/storage.md](docs/storage.md): file storage: a bucket on S3, R2, MinIO, disk or memory; put, get, list, serve; files and transactions
+- [docs/manifest.md](docs/manifest.md): loom.manifest, the app's behaviour for review, kept fresh by a test
+- [docs/errors.md](docs/errors.md): every compile and runtime error code and its fix
+- [docs/events.md](docs/events.md): the event stream: what a running app did, traces from a click to its jobs, loom events, trace, stats
+- [docs/deploy.md](docs/deploy.md): production: migrating from the binary, a rollout, several nodes, proxies, Postgres
+- [docs/cli.md](docs/cli.md): the loom command and its JSON output
+- [docs/wire.md](docs/wire.md): render trees and diffs sent to the browser
+- [docs/design.md](docs/design.md): the choices that shape Loom, in a line or two each
+
+Check templates with `go run ./cmd/loom check --json`. Run an app with
+`loom dev`, then ask it about itself with `loom routes`, `loom sessions`,
+`loom inspect SID`, `loom render COMPONENT`, `loom errors`, `loom jobs`,
+`loom queues`, `loom nodes`, `loom cron` and `loom storage` (all with `--json`); see what it did with
+`loom events`, `loom trace ID` and `loom stats`, and check everything at
+once with `loom doctor`. See the database with
+`loom db schema` and `loom migrate status`. List the starter kit's
+components with `loom components --json` and copy them into an app with
+`loom components add NAME`. `loom mcp` serves the same as MCP tools.
+Start a new app with `loom new DIR`; read these docs from anywhere with
+`loom docs [TOPIC]`.
