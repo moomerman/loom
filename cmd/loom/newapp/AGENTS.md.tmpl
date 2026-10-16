@@ -10,8 +10,7 @@ docs (below) and let `loom check` tell you what's wrong.
 ## Commands
 
 ```
-loom dev ./cmd/{{.Command}}
-                              run the app at http://localhost:4000, rebuilding and
+loom dev                      run ./cmd/{{.Command}} at http://localhost:4000, rebuilding and
                               reloading on every change (and migrating, with $DATABASE_URL)
 loom check [--json]           parse and type-check every .hx template
 loom build [--json]           check, then write the generated *_hx.go files

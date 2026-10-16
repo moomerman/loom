@@ -52,6 +52,7 @@ const (
 type devEvent struct {
 	Event       string            `json:"event"` // "serving", "building", "migrated", "ready", "error", "exit"
 	URL         string            `json:"url,omitempty"`
+	Package     string            `json:"package,omitempty"` // for "serving": the main package it runs
 	Changed     []string          `json:"changed,omitempty"`
 	Ms          int64             `json:"ms,omitempty"`
 	Kind        string            `json:"kind,omitempty"`    // for "error": "migration", "template", "go" or "exit"
@@ -93,9 +94,15 @@ func runDev(args []string, stdout, stderr io.Writer) int {
 	if !fs.parse(args, 0, 1) {
 		return 2
 	}
-	pkg := "."
+	var pkg string
 	if fs.NArg() == 1 {
 		pkg = fs.Arg(0)
+	} else {
+		var err error
+		if pkg, err = findDevMain("."); err != nil {
+			fmt.Fprintf(stderr, "loom dev: %v\n", err)
+			return 2
+		}
 	}
 	if len(watch) == 0 {
 		watch = []string{"."}
@@ -132,7 +139,7 @@ func (d *devServer) run(ctx context.Context) error {
 	srv := &http.Server{Handler: d}
 	go srv.Serve(ln)
 	defer srv.Close()
-	d.emit(devEvent{Event: "serving", URL: "http://" + displayAddr(ln.Addr().String())})
+	d.emit(devEvent{Event: "serving", URL: "http://" + displayAddr(ln.Addr().String()), Package: d.pkg})
 
 	defer d.stopApp()
 	files := snapshot(d.watch, d.migrations)
@@ -276,7 +283,7 @@ func (d *devServer) emit(e devEvent) {
 	}
 	switch e.Event {
 	case "serving":
-		fmt.Fprintf(d.out, "loom dev: serving %s\n", e.URL)
+		fmt.Fprintf(d.out, "loom dev: serving %s (%s)\n", e.URL, e.Package)
 	case "building":
 		if len(e.Changed) > 0 {
 			fmt.Fprintf(d.out, "loom dev: %s changed, rebuilding\n", strings.Join(e.Changed, ", "))

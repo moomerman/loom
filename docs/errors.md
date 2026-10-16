@@ -693,6 +693,9 @@ A broadcast (`app.Broadcast`, a job's `c.Broadcast`) encoded to more than Postgr
 ### RT450
 `c.Meta(loom.Meta{StructuredData: v})` gave structured data that `encoding/json` can't marshal: a channel, a function, a cycle, or a type whose `MarshalJSON` fails. It is reported like `c.Fail` and the page renders without the JSON-LD. Build it from maps, slices, strings, numbers and structs with json tags.
 
+### RT451
+`loom dev` was run with no package and couldn't tell which main package runs the app. With no argument it runs `.` if that is a main package; otherwise the main package under `cmd/` (Go's convention, as `loom new` makes it): the one with a `//loom:dev` line, else the only one, else the only one that calls `loom.New` and `Run`. The error lists the candidates. Add a `//loom:dev` line to the app's `main.go` (say, above `func main`), or name the package: `loom dev ./cmd/myapp`.
+
 ### RT424
 The server didn't run an event and the browser should send it again: the server is shutting down (the answer is 503 with `Retry-After`), or it couldn't read `loom_clients` to tell whether the event already ran. Nothing to fix in the app: loom.js keeps the event in its outbox and resends it, to the restarted server if need be, where it runs once. If it persists, check the database connection.
 

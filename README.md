@@ -35,7 +35,7 @@ You need Go 1.25 or later.
 go install github.com/moomerman/loom/cmd/loom@latest
 loom new myapp
 cd myapp
-loom dev ./cmd/myapp
+loom dev
 ```
 
 Open http://localhost:4000. See

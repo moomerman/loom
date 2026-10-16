@@ -83,6 +83,7 @@ const (
 	RT448 = "RT448" // c.NotFound called after Mount, where it can't answer 404
 	RT449 = "RT449" // c.Meta changed after the page loaded, where nothing reads it
 	RT450 = "RT450" // c.Meta's StructuredData can't be encoded as JSON
+	RT451 = "RT451" // loom dev can't tell which main package to run
 )
 
 // panicError converts a recovered panic into an RT402 error, locating the
