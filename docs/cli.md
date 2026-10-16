@@ -43,7 +43,7 @@ With `--json`:
   "files": [".claude/skills/loom/SKILL.md", ".gitignore", ".mcp.json", "AGENTS.md", "app.go", "..."],
   "diagnostics": [],
   "warnings": [],
-  "next": ["cd myapp", "loom dev ./cmd/myapp"]
+  "next": ["cd myapp", "loom dev"]
 }
 ```
 
@@ -185,7 +185,12 @@ With `--json`:
 loom dev [--json] [--addr localhost:4000] [--watch DIR]... [--db URL] [--migrations DIR] [PACKAGE]
 ```
 
-Runs the app in `PACKAGE` (default `.`, a main package) for development.
+Runs the app in `PACKAGE` for development. With no `PACKAGE` it finds
+the app: `.` if that is a main package, else the main package in
+`cmd/*` (Go's convention, and what `loom new` makes): the one with a
+`//loom:dev` line, else the only one, else the only one that calls
+`loom.New` and `Run`. When it can't tell, it says so (RT451) and lists
+them; mark one with `//loom:dev`, or name it.
 It watches the `.hx`, `.go`, `tokens.toml` and behavior `.js` files under
 each `--watch` directory (default `.`), and on a change it runs `loom build` on them, `go build`s
 the app, restarts it and remounts every open page, keeping form input
@@ -215,7 +220,7 @@ With `--json`, stdout has one JSON object per line:
 
 | `event` | Fields | Meaning |
 |---|---|---|
-| `serving` | `url` | the proxy is listening |
+| `serving` | `url`, `package` | the proxy is listening; `package` is the main package it runs |
 | `building` | `changed` (paths) | a build started; `changed` is empty for the first build |
 | `migrated` | `applied` (paths) | pending migrations were applied |
 | `ready` | `ms` | the new build is running; pages remount |
@@ -228,7 +233,7 @@ With `--json`, stdout has one JSON object per line:
 text.
 
 Exit status: 0 on interrupt, 2 if it can't start (e.g. the address is in
-use).
+use, or RT451).
 
 ### loom status
 

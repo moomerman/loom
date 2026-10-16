@@ -372,7 +372,7 @@ func (p *TodoPage) HandleInfo(c *loom.Ctx, msg loom.Message) {
 
 ## Developing
 
-`loom dev ./cmd/myapp` runs the app, rebuilds and restarts it when a
+`loom dev` runs the app (the main package in `cmd/`), rebuilds and restarts it when a
 `.hx` or `.go` file changes, and reloads open pages; build errors show in
 the browser. While it runs, `loom sessions` lists open pages, `loom
 inspect SID` shows a page's assigns, HTML and timers, `loom render Component

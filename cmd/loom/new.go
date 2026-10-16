@@ -206,7 +206,7 @@ func scaffold(dir, module, loomDir string) (*newOutput, error) {
 		next = append(next, "go mod tidy")
 	}
 	sort.Strings(out.Files)
-	out.Next = append(next, "loom dev ./cmd/"+app.Command)
+	out.Next = append(next, "loom dev")
 	return out, nil
 }
 

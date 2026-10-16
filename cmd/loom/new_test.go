@@ -39,7 +39,7 @@ func TestNew(t *testing.T) {
 	if goOnPath == nil && len(out.Warnings) != 0 {
 		t.Errorf("warnings: %q", out.Warnings)
 	}
-	if last := out.Next[len(out.Next)-1]; last != "loom dev ./cmd/hello-world" {
+	if last := out.Next[len(out.Next)-1]; last != "loom dev" {
 		t.Errorf("next ends %q", last)
 	}
 	for _, f := range []string{
@@ -75,7 +75,7 @@ func TestNew(t *testing.T) {
 	if !strings.HasPrefix(read("CLAUDE.md"), "@AGENTS.md\n") {
 		t.Errorf("CLAUDE.md doesn't import AGENTS.md:\n%s", read("CLAUDE.md"))
 	}
-	for _, want := range []string{"loom check", "loom build", "loom dev ./cmd/hello-world", "loom test", "loom migrate", "loom db new", "loom components add", "loom mcp", "loom docs", "before `go test`"} {
+	for _, want := range []string{"loom check", "loom build", "loom dev", "loom test", "loom migrate", "loom db new", "loom components add", "loom mcp", "loom docs", "before `go test`"} {
 		if !strings.Contains(read("AGENTS.md"), want) {
 			t.Errorf("AGENTS.md doesn't mention %q", want)
 		}
