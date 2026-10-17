@@ -24,6 +24,30 @@ import (
 
 const defaultURL = "http://localhost:4000"
 
+// appURL is the default --url: $LOOM_URL, else the app loom dev serves
+// on $PORT, else defaultURL.
+func appURL() string {
+	if v := os.Getenv("LOOM_URL"); v != "" {
+		return v
+	}
+	if port := os.Getenv("PORT"); port != "" {
+		return "http://localhost:" + port
+	}
+	return defaultURL
+}
+
+// devAddr is the default address loom dev serves on: $LOOM_DEV_ADDR,
+// else localhost:$PORT, else localhost:4000.
+func devAddr() string {
+	if v := os.Getenv("LOOM_DEV_ADDR"); v != "" {
+		return v
+	}
+	if port := os.Getenv("PORT"); port != "" {
+		return "localhost:" + port
+	}
+	return "localhost:4000"
+}
+
 // devClient talks to an app's /_loom/dev/ endpoints.
 type devClient struct {
 	base string
@@ -100,7 +124,7 @@ func introspectFlags(name, usageLine string, args []string, stdout, stderr io.Wr
 	run func(c *devClient, args []string) (data []byte, human func(w io.Writer) error, err error)) int {
 	fs := newCommand(name, usageLine, "print the app's JSON", stderr)
 	asJSON := fs.JSON
-	url := fs.String("url", envOr("LOOM_URL", defaultURL), "the app's URL (default $LOOM_URL or "+defaultURL+")")
+	url := fs.String("url", appURL(), "the app's URL (default $LOOM_URL, or http://localhost:$PORT, or "+defaultURL+")")
 	assigns := ""
 	if name == "render" {
 		fs.StringVar(&assigns, "assigns", "", "a JSON file of assigns, or - for stdin (default {})")
@@ -172,13 +196,6 @@ func interleave(fs *flag.FlagSet, args []string) []string {
 		}
 	}
 	return append(flags, pos...)
-}
-
-func envOr(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
 }
 
 func runRoutes(args []string, stdout, stderr io.Writer) int {

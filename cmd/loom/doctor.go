@@ -31,7 +31,7 @@ type Check struct {
 func runDoctor(args []string, stdout, stderr io.Writer) int {
 	fs := newCommand("doctor", "doctor [--json] [--url URL] [--db URL] [--dir DIR] [path]", "print the checks as a JSON array", stderr)
 	asJSON := fs.JSON
-	base := fs.String("url", envOr("LOOM_URL", defaultURL), "the running app's URL (default $LOOM_URL or "+defaultURL+")")
+	base := fs.String("url", appURL(), "the running app's URL (default $LOOM_URL, or http://localhost:$PORT, or "+defaultURL+")")
 	o := &dbOpts{}
 	fs.StringVar(&o.url, "db", os.Getenv("DATABASE_URL"), "the database URL (default $DATABASE_URL)")
 	fs.StringVar(&o.dir, "dir", defaultMigrations, "the migrations directory")

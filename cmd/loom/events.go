@@ -86,7 +86,7 @@ func hasFlag(args []string, name string) bool {
 func followEvents(usageLine string, args []string, stdout, stderr io.Writer, setup func(*flag.FlagSet)) int {
 	fs := newCommand("events", usageLine, "print each event's JSON on a line of its own", stderr)
 	asJSON := fs.JSON
-	base := fs.String("url", envOr("LOOM_URL", defaultURL), "the app's URL (default $LOOM_URL or "+defaultURL+")")
+	base := fs.String("url", appURL(), "the app's URL (default $LOOM_URL, or http://localhost:$PORT, or "+defaultURL+")")
 	setup(fs.FlagSet)
 	if !fs.parse(args, 0, 0) {
 		return 2

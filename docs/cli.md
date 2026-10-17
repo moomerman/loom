@@ -191,6 +191,9 @@ the app: `.` if that is a main package, else the main package in
 `//loom:dev` line, else the only one, else the only one that calls
 `loom.New` and `Run`. When it can't tell, it says so (RT451) and lists
 them; mark one with `//loom:dev`, or name it.
+It serves on `--addr`, which defaults to `$LOOM_DEV_ADDR`, else
+`localhost:$PORT`, else `localhost:4000`; so `PORT=5000 loom dev` serves
+on `http://localhost:5000`.
 It watches the `.hx`, `.go`, `tokens.toml` and behavior `.js` files under
 each `--watch` directory (default `.`), and on a change it runs `loom build` on them, `go build`s
 the app, restarts it and remounts every open page, keeping form input
@@ -280,7 +283,8 @@ failures.
 
 These commands ask an app running in dev mode (under `loom dev`, or with
 dev mode on) about itself, through its `/_loom/dev/` endpoints. They
-take `--url` (default `$LOOM_URL` or `http://localhost:4000`) and
+take `--url` (default `$LOOM_URL`, else `http://localhost:$PORT`, else
+`http://localhost:4000`) and
 `--json`, which prints the endpoint's JSON as is.
 
 Exit status: 0 on success; 1 when the app answers with an error, printed

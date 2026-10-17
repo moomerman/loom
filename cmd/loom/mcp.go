@@ -464,7 +464,7 @@ func runMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: loom mcp [--url URL] [--db URL] [--migrations DIR]")
 		fs.PrintDefaults()
 	}
-	base := fs.String("url", envOr("LOOM_URL", defaultURL), "the app's URL (default $LOOM_URL or "+defaultURL+")")
+	base := fs.String("url", appURL(), "the app's URL (default $LOOM_URL, or http://localhost:$PORT, or "+defaultURL+")")
 	db := &dbOpts{}
 	fs.StringVar(&db.url, "db", os.Getenv("DATABASE_URL"), "the database URL, for the database tools (default $DATABASE_URL)")
 	fs.StringVar(&db.dir, "migrations", defaultMigrations, "the migrations directory, for migrate_status")

@@ -25,7 +25,7 @@ Usage:
                                    check templates, generated code, migrations, the
                                    environment and the running app, each with a fix
 
-Ask a running app in dev mode (default --url http://localhost:4000):
+Ask a running app in dev mode (default --url $LOOM_URL, or http://localhost:$PORT, or :4000):
   loom status [--json] [--wait]    loom dev's build state: building, ready or error
   loom routes [--json]             list live routes
   loom manifest [--json]           what the app does, for review (docs/manifest.md)

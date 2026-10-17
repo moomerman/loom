@@ -158,3 +158,26 @@ func TestStorageCommand(t *testing.T) {
 		t.Errorf("storage /bad: %d %q", code, out)
 	}
 }
+
+// TestPortEnv: $PORT moves loom dev and the commands that ask it, unless
+// $LOOM_DEV_ADDR or $LOOM_URL say otherwise.
+func TestPortEnv(t *testing.T) {
+	for _, tc := range []struct {
+		port, devAddr, url string
+		wantAddr, wantURL  string
+	}{
+		{"", "", "", "localhost:4000", "http://localhost:4000"},
+		{"5000", "", "", "localhost:5000", "http://localhost:5000"},
+		{"5000", "localhost:6000", "http://localhost:7000", "localhost:6000", "http://localhost:7000"},
+	} {
+		t.Setenv("PORT", tc.port)
+		t.Setenv("LOOM_DEV_ADDR", tc.devAddr)
+		t.Setenv("LOOM_URL", tc.url)
+		if got := devAddr(); got != tc.wantAddr {
+			t.Errorf("PORT=%q LOOM_DEV_ADDR=%q: devAddr() = %q, want %q", tc.port, tc.devAddr, got, tc.wantAddr)
+		}
+		if got := appURL(); got != tc.wantURL {
+			t.Errorf("PORT=%q LOOM_URL=%q: appURL() = %q, want %q", tc.port, tc.url, got, tc.wantURL)
+		}
+	}
+}

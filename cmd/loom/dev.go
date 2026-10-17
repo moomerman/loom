@@ -84,9 +84,9 @@ type devServer struct {
 }
 
 func runDev(args []string, stdout, stderr io.Writer) int {
-	fs := newCommand("dev", "dev [--json] [--addr :4000] [--watch DIR]... [--db URL] [--migrations DIR] [PACKAGE]", "print events as JSON lines", stderr)
+	fs := newCommand("dev", "dev [--json] [--addr localhost:4000] [--watch DIR]... [--db URL] [--migrations DIR] [PACKAGE]", "print events as JSON lines", stderr)
 	asJSON := fs.JSON
-	addr := fs.String("addr", envOr("LOOM_DEV_ADDR", "localhost:4000"), "address to serve on")
+	addr := fs.String("addr", devAddr(), "address to serve on (default $LOOM_DEV_ADDR, or localhost:$PORT, or localhost:4000)")
 	var watch multiFlag
 	fs.Var(&watch, "watch", "directory to watch, repeatable (default .)")
 	dbURL := fs.String("db", os.Getenv("DATABASE_URL"), "apply migrations to this database on start and on change (default $DATABASE_URL)")
