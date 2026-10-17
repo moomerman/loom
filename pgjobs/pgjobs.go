@@ -93,6 +93,30 @@ func (s *Store) DB() *data.DB { return s.ldb }
 // Clock returns the store's clock.
 func (s *Store) Clock() jobs.Clock { return s.clock }
 
+// uniqueSQL finds an existing unique job. Its non-empty unique_key clause
+// repeats the loom_jobs_unique index's predicate: a prepared statement's
+// generic plan can't infer it from unique_key = $1, and without it Postgres
+// scans the table on every unique insert, cron's included.
+const uniqueSQL = `
+	SELECT id FROM loom_jobs
+	WHERE unique_key = $1 AND unique_key <> '' AND inserted_at >= $2 AND state NOT IN ('discarded', 'cancelled')
+	ORDER BY inserted_at, id LIMIT 1`
+
+// fetchSQL claims due jobs. Its WHERE clause states the loom_jobs_fetch
+// index's predicate as the index is written, so the planner walks that
+// index in (queue, scheduled_at, id) order and stops at the limit,
+// instead of combining indexes or scanning the table.
+const fetchSQL = `
+	UPDATE loom_jobs SET state = 'executing', attempt = attempt + 1, attempted_at = $3, attempted_by = $4, lease_until = $5
+	WHERE id IN (
+		SELECT id FROM loom_jobs
+		WHERE queue = $1 AND state IN ('available', 'scheduled', 'retryable') AND (state = 'available' OR scheduled_at <= $3)
+		ORDER BY scheduled_at, id
+		LIMIT $2
+		FOR UPDATE SKIP LOCKED
+	)
+	RETURNING ` + columns
+
 // Insert inserts a job in tx. For a unique job it first takes a
 // transaction-scoped advisory lock on the key, so concurrent inserts of
 // the same unique job serialize, and the second sees the first once it
@@ -104,10 +128,7 @@ func (s *Store) Insert(t data.Tx, j jobs.NewJob) (jobs.Result, error) {
 			return jobs.Result{}, err
 		}
 		var id int64
-		err := t.QueryRow(ctx, `
-			SELECT id FROM loom_jobs
-			WHERE unique_key = $1 AND inserted_at >= $2 AND state NOT IN ('discarded', 'cancelled')
-			ORDER BY id LIMIT 1`, j.UniqueKey, j.UniqueSince).Scan(&id)
+		err := t.QueryRow(ctx, uniqueSQL, j.UniqueKey, j.UniqueSince).Scan(&id)
 		switch {
 		case err == nil:
 			return jobs.Result{ID: id, Duplicate: true}, nil
@@ -187,16 +208,7 @@ func scanAll(rows *sql.Rows) ([]*jobs.Record, error) {
 // Fetch claims due jobs with FOR UPDATE SKIP LOCKED, so concurrent
 // fetches never block on or return the same job.
 func (s *Store) Fetch(ctx context.Context, r jobs.FetchRequest) ([]*jobs.Record, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		UPDATE loom_jobs SET state = 'executing', attempt = attempt + 1, attempted_at = $3, attempted_by = $4, lease_until = $5
-		WHERE id IN (
-			SELECT id FROM loom_jobs
-			WHERE queue = $1 AND (state = 'available' OR (state IN ('scheduled', 'retryable') AND scheduled_at <= $3))
-			ORDER BY scheduled_at, id
-			LIMIT $2
-			FOR UPDATE SKIP LOCKED
-		)
-		RETURNING `+columns, r.Queue, r.Limit, r.Now, r.Node, r.LeaseUntil)
+	rows, err := s.db.QueryContext(ctx, fetchSQL, r.Queue, r.Limit, r.Now, r.Node, r.LeaseUntil)
 	if err != nil {
 		return nil, err
 	}

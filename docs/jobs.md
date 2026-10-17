@@ -71,9 +71,14 @@ app.Run(":4000")
   `Jobs: loom.JobsMode(os.Getenv("LOOM_JOBS"))`. An unknown mode is
   RT441; the manifest and `/_loom/health` show the node's.
 - `app.JobRunner()` returns the `*jobs.Runner`, for its `Store()` and
-  settings (`Node`, `PollInterval`, `LeaseDuration`, `ShutdownGrace`,
-  `Retention`, `NodeRetention`, `CronCatchUp`, `Backoff`), set before
-  `Run`.
+  settings (`Node`, `PollInterval`, `IdlePollInterval`, `LeaseDuration`,
+  `ShutdownGrace`, `Retention`, `NodeRetention`, `CronCatchUp`,
+  `Backoff`), set before `Run`.
+- New jobs, manual retries and rescues wake their queue at once. Otherwise a
+  queue looks for due jobs every `PollInterval` (1s) while it finds
+  them and every `IdlePollInterval` (5s) once it is idle, so a
+  scheduled job or a retry on an idle queue may start up to 5s after
+  its time. The leader runs cron and rescues every `PollInterval`.
 
 ## Enqueueing
 

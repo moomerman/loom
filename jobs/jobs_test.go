@@ -356,3 +356,103 @@ func TestFinishRetried(t *testing.T) {
 		t.Fatalf("job is %s after two failed finishes, want completed", rec.State)
 	}
 }
+
+// countingStore counts the calls the runner makes to the store.
+type countingStore struct {
+	*MemoryStore
+	mu               sync.Mutex
+	inserts, fetches int
+}
+
+func (s *countingStore) Insert(tx data.Tx, j NewJob) (Result, error) {
+	s.mu.Lock()
+	s.inserts++
+	s.mu.Unlock()
+	return s.MemoryStore.Insert(tx, j)
+}
+
+func (s *countingStore) Fetch(ctx context.Context, r FetchRequest) ([]*Record, error) {
+	s.mu.Lock()
+	s.fetches++
+	s.mu.Unlock()
+	return s.MemoryStore.Fetch(ctx, r)
+}
+
+func (s *countingStore) counts() (inserts, fetches int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.inserts, s.fetches
+}
+
+// The leader evaluates cron every PollInterval, but enqueues each tick
+// once: a tick it already enqueued costs no store call.
+func TestLeaderEnqueuesEachCronTickOnce(t *testing.T) {
+	clock := NewFakeClock(time.Date(2026, 1, 4, 3, 0, 0, 0, time.UTC))
+	s := &countingStore{MemoryStore: NewMemoryStore(MemoryOptions{Clock: clock})}
+	r := NewRunner(s)
+	r.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	if err := r.Register(okJob{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Cron("*/5 * * * *", okJob{}); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	for range 3 {
+		r.lead(ctx)
+		clock.Advance(time.Second)
+	}
+	if n, _ := s.counts(); n != 2 { // the 03:00 tick and the hourly prune's
+		t.Fatalf("%d inserts after three passes in one tick, want 2", n)
+	}
+	clock.Advance(5 * time.Minute)
+	r.lead(ctx)
+	if n, _ := s.counts(); n != 3 {
+		t.Fatalf("%d inserts after the next tick, want 3", n)
+	}
+	// An explicit EnqueueCron still checks the store.
+	if err := r.EnqueueCron(ctx, false); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := s.counts(); n != 4 {
+		t.Fatalf("%d inserts after EnqueueCron, want 4", n)
+	}
+}
+
+// An idle queue looks for jobs every IdlePollInterval, not every
+// PollInterval, and a new job still wakes it at once.
+func TestIdleQueuePollsSlowly(t *testing.T) {
+	s := &countingStore{MemoryStore: NewMemoryStore(MemoryOptions{})}
+	r := NewRunner(s)
+	r.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	r.PollInterval = 5 * time.Millisecond
+	r.IdlePollInterval = time.Hour
+	if err := r.Register(okJob{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer r.Shutdown(context.Background())
+	time.Sleep(100 * time.Millisecond)
+	if _, n := s.counts(); n != 1 {
+		t.Fatalf("idle default queue fetched %d times, want once", n)
+	}
+	var res Result
+	s.DB().Tx(context.Background(), func(tx data.Tx) error {
+		var err error
+		res, err = Enqueue(tx, okJob{ID: "now"})
+		return err
+	})
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		rec, err := s.Get(context.Background(), res.ID)
+		if err == nil && rec.State == Completed {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("job not run after enqueue: %+v, %v", rec, err)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}

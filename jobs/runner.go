@@ -51,6 +51,12 @@ type Runner struct {
 	// notification wakes them, and how often the leader runs cron and
 	// rescues jobs. Default 1s.
 	PollInterval time.Duration
+	// IdlePollInterval is how often a queue whose last fetch found
+	// nothing looks again when nothing wakes it. New jobs, manual retries and
+	// rescues wake their queue at once (Store.Subscribe), so this only
+	// bounds how late a scheduled job or a retry after its backoff can
+	// start on an idle queue. Default 5s.
+	IdlePollInterval time.Duration
 	// LeaseDuration is how long a fetched job is held without renewal
 	// before another node may rescue it. Leases are renewed every third
 	// of it. Default 30s.
@@ -156,22 +162,23 @@ type cronEntry struct {
 // registers and schedules the built-in Prune job.
 func NewRunner(store Store) *Runner {
 	r := &Runner{
-		Node:           defaultNode(),
-		Logger:         slog.New(slog.NewTextHandler(os.Stderr, nil)),
-		PollInterval:   time.Second,
-		LeaseDuration:  30 * time.Second,
-		ShutdownGrace:  DefaultShutdownGrace,
-		Retention:      7 * 24 * time.Hour,
-		NodeRetention:  DefaultNodeRetention,
-		CronCatchUp:    5 * time.Minute,
-		Backoff:        DefaultBackoff,
-		ChangeInterval: 250 * time.Millisecond,
-		StatsMaxAge:    time.Second,
-		store:          store,
-		clock:          store.Clock(),
-		types:          map[string]Job{},
-		running:        map[int64]*runningJob{},
-		stop:           make(chan struct{}),
+		Node:             defaultNode(),
+		Logger:           slog.New(slog.NewTextHandler(os.Stderr, nil)),
+		PollInterval:     time.Second,
+		IdlePollInterval: 5 * time.Second,
+		LeaseDuration:    30 * time.Second,
+		ShutdownGrace:    DefaultShutdownGrace,
+		Retention:        7 * 24 * time.Hour,
+		NodeRetention:    DefaultNodeRetention,
+		CronCatchUp:      5 * time.Minute,
+		Backoff:          DefaultBackoff,
+		ChangeInterval:   250 * time.Millisecond,
+		StatsMaxAge:      time.Second,
+		store:            store,
+		clock:            store.Clock(),
+		types:            map[string]Job{},
+		running:          map[int64]*runningJob{},
+		stop:             make(chan struct{}),
 	}
 	r.types[TypeName(Prune{})] = Prune{runner: r}
 	r.cron = append(r.cron, &cronEntry{sched: mustCron("0 * * * *"), job: Prune{}, typ: TypeName(Prune{}), args: []byte("{}"), opts: OptionsOf(Prune{}), builtin: true})
@@ -417,7 +424,10 @@ func (r *Runner) wakeQueue(name string) {
 }
 
 // dispatch fetches jobs for a queue whenever it has free slots and is
-// woken: by a notification, a finished job, or the poll timer.
+// woken: by a notification, a finished job, or the poll timer. The timer
+// waits PollInterval after a fetch that found jobs and IdlePollInterval
+// after one that found none, so idle queues don't query the store every
+// second on every node.
 func (r *Runner) dispatch(q *queue) {
 	defer r.loops.Done()
 	timer := time.NewTimer(0)
@@ -429,8 +439,17 @@ func (r *Runner) dispatch(q *queue) {
 		case <-q.wake:
 		case <-timer.C:
 		}
-		r.fetch(q)
-		timer.Reset(r.PollInterval)
+		wait := r.PollInterval
+		if !r.fetch(q) {
+			wait = max(r.IdlePollInterval, r.PollInterval)
+		}
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+		timer.Reset(wait)
 	}
 }
 
@@ -442,13 +461,16 @@ func (r *Runner) storeCtx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), max(r.LeaseDuration/3, 5*time.Second))
 }
 
-func (r *Runner) fetch(q *queue) {
+// fetch claims due jobs for q's free slots and starts them. It reports
+// whether the queue may have more to do: false only when the store had no
+// due jobs for it.
+func (r *Runner) fetch(q *queue) bool {
 	r.mu.Lock()
 	free := q.Concurrency - q.running
 	stopping := r.stopping
 	r.mu.Unlock()
 	if free <= 0 || stopping {
-		return
+		return true
 	}
 	now := Round(r.clock.Now())
 	ctx, cancel := r.storeCtx()
@@ -456,10 +478,10 @@ func (r *Runner) fetch(q *queue) {
 	recs, err := r.store.Fetch(ctx, FetchRequest{Queue: q.Name, Limit: free, Node: r.Node, Now: now, LeaseUntil: now.Add(r.LeaseDuration)})
 	if err != nil {
 		r.fail(ctx, "loom jobs: fetching jobs", "queue", q.Name, "err", err)
-		return
+		return true
 	}
 	if len(recs) == 0 {
-		return
+		return false
 	}
 	ids := make([]int64, len(recs))
 	for i, rec := range recs {
@@ -480,7 +502,7 @@ func (r *Runner) fetch(q *queue) {
 			}
 		}
 		r.changed(ids...)
-		return
+		return true
 	}
 	cancels := make([]context.CancelFunc, len(recs))
 	ctxs := make([]context.Context, len(recs))
@@ -507,6 +529,7 @@ func (r *Runner) fetch(q *queue) {
 			}
 		}()
 	}
+	return true
 }
 
 // heartbeat records this node in the registry at once, then renews the
@@ -591,7 +614,7 @@ func (r *Runner) lead(ctx context.Context) {
 		r.stream().Emit(ctx, trace.JobsRescue, "msg", "loom jobs: rescued jobs whose node stopped renewing their lease", "count", n)
 		r.changed()
 	}
-	r.enqueueCron(ctx, now, true)
+	r.enqueueCron(ctx, now, true, false)
 }
 
 // IsLeader reports whether this node led the cluster at its last check.
@@ -602,8 +625,10 @@ func (r *Runner) IsLeader() bool {
 }
 
 // enqueueCron enqueues the latest tick of each entry within CronCatchUp
-// of now, as a unique job per entry and tick.
-func (r *Runner) enqueueCron(ctx context.Context, now time.Time, builtins bool) error {
+// of now, as a unique job per entry and tick. Unless again is set, it
+// skips a tick this node already enqueued: the leader runs it every
+// PollInterval, and the unique check would otherwise run each time.
+func (r *Runner) enqueueCron(ctx context.Context, now time.Time, builtins, again bool) error {
 	r.mu.Lock()
 	entries := append([]*cronEntry(nil), r.cron...)
 	r.mu.Unlock()
@@ -614,6 +639,12 @@ func (r *Runner) enqueueCron(ctx context.Context, now time.Time, builtins bool) 
 		}
 		tick := e.sched.latest(now.Add(-r.CronCatchUp), now)
 		if tick.IsZero() {
+			continue
+		}
+		r.mu.Lock()
+		seen := e.lastTick.Equal(tick)
+		r.mu.Unlock()
+		if seen && !again {
 			continue
 		}
 		nj := NewJob{
@@ -959,7 +990,7 @@ func (r *Runner) RunDue(ctx context.Context) (int, error) {
 // EnqueueCron enqueues due cron ticks at the clock's time, as the leader
 // does each PollInterval. builtins includes the built-in Prune entry.
 func (r *Runner) EnqueueCron(ctx context.Context, builtins bool) error {
-	return r.enqueueCron(ctx, Round(r.clock.Now()), builtins)
+	return r.enqueueCron(ctx, Round(r.clock.Now()), builtins, true)
 }
 
 // NextCron returns the earliest cron tick after t, or the zero time.
