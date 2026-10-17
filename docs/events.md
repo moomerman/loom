@@ -143,7 +143,9 @@ stream was dropped; it reconnects and resyncs: `sid`.
 ### event.refused
 Info. A browser event that never reached its page: `sid`, `event`,
 `code` (RT424 restarting, RT405 malformed, RT404 no session, RT407 too
-many waiting) and `status`. A click that did nothing shows here.
+many waiting) and `status`. A click that did nothing shows here. Also
+an event queued for a page's previous session that its new one doesn't
+bind, with `moved` true and code RT438 (see that code).
 
 ### event.duplicate
 Debug. A resent event that had already run, answered as handled:

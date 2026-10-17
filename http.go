@@ -134,13 +134,15 @@ func writeEvent(w http.ResponseWriter, m message) {
 
 // eventRequest is the body of POST /_loom/event. Client and Seq name
 // the event for deduplication (outbox.go); without them it runs each time
-// it is sent.
+// it is sent. Moved says the browser queued it for an earlier session of
+// the page and moved it to this one, after a restart or a reload.
 type eventRequest struct {
 	SID     string  `json:"sid"`
 	Client  string  `json:"client"`
 	Seq     int64   `json:"seq"`
 	Event   string  `json:"event"`
 	Payload Payload `json:"payload"`
+	Moved   bool    `json:"moved"`
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) error {

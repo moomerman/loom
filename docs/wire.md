@@ -121,7 +121,10 @@ resends the statics of a block that stays in place.
   or RT438 and 403 (the event is dropped), 429 RT436 with `Retry-After`
   (a rate limit: dropped, and the page marked `loom-limited` until
   then), 404 RT404 (the session is gone: the browser remounts and
-  resends), 503 RT407 or RT424 (resent).
+  resends), 503 RT407 or RT424 (resent). A resend to the page's new
+  session, after a remount or a reload, has `"moved": true`: if the new
+  render doesn't bind the event, its RT438 is recorded as
+  `event.refused`, not as an error.
 
 Every page render that changes the tree or the title increments the
 session's version. Stream events:

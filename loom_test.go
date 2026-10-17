@@ -19,6 +19,7 @@ import (
 	"github.com/moomerman/loom/form"
 	"github.com/moomerman/loom/internal/hxtest"
 	"github.com/moomerman/loom/render"
+	"github.com/moomerman/loom/trace"
 )
 
 // counterPage renders hxtest.Counter with a counter, panics on "boom" and
@@ -433,5 +434,32 @@ func TestEventNotOnPage(t *testing.T) {
 	sid = sidRE.FindStringSubmatch(string(b))[1]
 	if code := post(t, srv, `{"sid":"`+sid+`","event":"inc"}`); code != 200 {
 		t.Errorf("shown control's event: %d", code)
+	}
+}
+
+// An event the browser queued for a page's previous session and moved to
+// its new one, after a restart or a reload, is refused like any other the
+// page doesn't bind (RT438), but isn't reported as an error: the new
+// session mounted without the state that showed the control, as when
+// chipshop's player was playing a tune its new session never picked.
+func TestMovedEventNotOnPage(t *testing.T) {
+	app := New(Config{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	app.Live("/", &hiddenPage{counterPage: counterPage{prefix: "n:"}}, hxtest.Counter)
+	srv := httptest.NewServer(app)
+	t.Cleanup(srv.Close)
+
+	sid, _ := load(t, srv)
+	if code := post(t, srv, `{"sid":"`+sid+`","client":"tab","seq":1,"event":"inc","moved":true}`); code != 400 {
+		t.Errorf("moved event the page doesn't bind: %d, want 400", code)
+	}
+	if v, _ := app.Inspect(sid); !strings.HasPrefix(v.HTML, `<span class="badge">n:</span>`) {
+		t.Errorf("the handler ran: %s", v.HTML)
+	}
+	if errs := app.errors.all(); len(errs) != 0 {
+		t.Errorf("errors = %+v, want none", errs)
+	}
+	refused := app.Stream().Since(0, trace.Filter{Name: trace.EventRefused})
+	if len(refused) != 1 || refused[0].Attrs["code"] != RT438 || refused[0].Attrs["moved"] != true {
+		t.Errorf("event.refused = %+v, want one RT438, moved", refused)
 	}
 }

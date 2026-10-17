@@ -220,10 +220,11 @@
   var client = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2),
     seq = 0, box = [], sending, held, limited, doc = document.documentElement;
   try {
-    // Entries a reload left for this page are resent to its new session;
-    // those for another page can't be, as it's gone.
+    // Entries a reload left for this page are resent to its new session,
+    // marked moved (m), as its render may no longer show what sent them
+    // (RT438); those for another page can't be, as it's gone.
     box = JSON.parse(sessionStorage.loomOutbox || "[]").filter(function (m) {
-      if (m.u === location.pathname) return (m.i = sid);
+      if (m.u === location.pathname) return (m.m = m.i = sid);
       console.error("loom: dropped an unacked " + m.e + " event of " + m.u + ", which is no longer open");
     });
   } catch (e) {}
@@ -257,7 +258,7 @@
     fetch("/_loom/event", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sid: m.i, client: m.c, seq: m.s, event: m.e, payload: m.p })
+      body: JSON.stringify({ sid: m.i, client: m.c, seq: m.s, event: m.e, payload: m.p, moved: !!m.m })
     }).then(function (r) {
       if (r.status > 499) throw r;
       sending = 0;
@@ -385,8 +386,8 @@
     sid = root.getAttribute("data-sid");
     full(t);
     connect();
-    // Unacked events of this page go to its new session.
-    box.forEach(function (m) { if (m.u === location.pathname) m.i = sid; });
+    // Unacked events of this page go to its new session, marked moved.
+    box.forEach(function (m) { if (m.u === location.pathname) m.m = m.i = sid; });
     save();
     held = 0;
     flush();

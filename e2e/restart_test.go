@@ -12,6 +12,7 @@ import (
 	"github.com/moomerman/loom"
 	"github.com/moomerman/loom/examples/todo"
 	"github.com/moomerman/loom/loomtest"
+	"github.com/moomerman/loom/trace"
 )
 
 // server serves the todo app at a fixed address and can be restarted
@@ -19,6 +20,7 @@ import (
 type server struct {
 	t    *testing.T
 	db   *loom.DB
+	app  *loom.App // the running app
 	addr string
 	srv  *httptest.Server
 }
@@ -45,6 +47,7 @@ func (s *server) start() {
 	app := loom.New()
 	app.UseDB(s.db)
 	todo.Setup(app)
+	s.app = app
 	s.srv = &httptest.Server{Listener: l, Config: &http.Server{Handler: app}}
 	s.srv.Start()
 }
@@ -122,5 +125,50 @@ func TestRestartMidForm(t *testing.T) {
 	n, err := loom.Get[int](context.Background(), s.db, `SELECT count(*) FROM todos WHERE title = 'Buy bread'`)
 	if err != nil || n != 1 {
 		t.Fatalf("todos titled Buy bread: %d, %v", n, err)
+	}
+}
+
+// A click queued while the server restarts, on a control the page no
+// longer shows once it remounts, is refused (RT438) without being
+// reported as an error: the page changed while the event waited. Here
+// the todo was unticked meanwhile, so "Clear completed" is gone.
+func TestRestartMovesStaleEvent(t *testing.T) {
+	s := newServer(t)
+	ctx := browser(t)
+	logConsole(t, ctx)
+	bg := context.Background()
+	if _, err := s.db.Exec(bg, `UPDATE todos SET done = true WHERE id = '00000000-0000-0000-0000-000000000001'`); err != nil {
+		t.Fatal(err)
+	}
+	clear := `button[on\:click="clear_completed"]`
+	var sid string
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(s.url()),
+		waitFor("#loom-root.loom-connected "+clear),
+		eval(`document.getElementById("loom-root").dataset.sid`, &sid),
+		do(s.stop),
+		click(clear),
+		chromedp.Sleep(300*time.Millisecond), // the send fails and waits to retry
+		do(func() {
+			if _, err := s.db.Exec(bg, `UPDATE todos SET done = false`); err != nil {
+				t.Error(err)
+			}
+		}),
+		do(s.start),
+		waitJS(`document.getElementById("loom-root").dataset.sid !== `+quote(sid)+` && sessionStorage.loomOutbox === "[]"`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := loom.Get[int](bg, s.db, `SELECT count(*) FROM todos`)
+	if err != nil || n != 2 {
+		t.Fatalf("todos: %d, %v; want both, as nothing was completed", n, err)
+	}
+	refused := s.app.Stream().Since(0, trace.Filter{Name: trace.EventRefused})
+	if len(refused) != 1 || refused[0].Attrs["code"] != loom.RT438 || refused[0].Attrs["moved"] != true {
+		t.Errorf("event.refused = %+v, want the moved clear_completed refused with RT438", refused)
+	}
+	if errs := s.app.Stream().Since(0, trace.Filter{Name: trace.Error}); len(errs) != 0 {
+		t.Errorf("errors = %+v, want none", errs)
 	}
 }

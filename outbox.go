@@ -203,7 +203,7 @@ func (a *App) serveEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	done := make(chan eventResult, 1)
 	select {
-	case s.events <- pageEvent{name: req.Event, payload: req.Payload, done: done, trace: id}:
+	case s.events <- pageEvent{name: req.Event, payload: req.Payload, done: done, trace: id, moved: req.Moved}:
 	default:
 		if req.Client != "" {
 			a.release(ctx, req.Client, req.Seq, false)

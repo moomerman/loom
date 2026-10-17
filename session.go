@@ -61,6 +61,7 @@ type pageEvent struct {
 	barrier bool             // nothing to run: shutdown waits for the events before it
 	done    chan eventResult // answers a browser event, or a barrier, once run
 	trace   string           // the trace id to handle it under; "" for a new one
+	moved   bool             // queued for an earlier session of the page (eventRequest.Moved)
 }
 
 // message is a Server-Sent Event.
@@ -264,8 +265,16 @@ func (s *session) handle(ev pageEvent) {
 	}
 	var e *Error
 	if errors.As(err, &e) && (e.Code == RT423 || e.Code == RT438) {
-		s.logError(err) // nothing ran, so the page is fine
 		res.status, res.err = http.StatusBadRequest, e
+		if e.Code == RT438 && ev.moved {
+			// The browser queued it for the page's previous session, whose
+			// render had the control, and the new one doesn't: the page
+			// changed while the event waited (a restart remounted it, from
+			// its URL), not a bug or a forged request. Refused all the same.
+			s.app.stream.Emit(s.view.ctx.Context(), trace.EventRefused, "sid", s.id, "event", ev.name, "code", e.Code, "status", res.status, "moved", true)
+			return
+		}
+		s.logError(err) // nothing ran, so the page is fine
 		return
 	}
 	if err != nil {
