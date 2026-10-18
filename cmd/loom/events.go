@@ -198,7 +198,14 @@ func runStats(args []string, stdout, stderr io.Writer) int {
 			if err := json.Unmarshal(data, &r); err != nil {
 				return err
 			}
-			fmt.Fprintf(w, "since %s (%s), %d live pages open\n\n", r.Started.Local().Format("15:04:05"), time.Since(r.Started).Round(time.Second), r.Sessions)
+			fmt.Fprintf(w, "since %s (%s), %d live pages open\n", r.Started.Local().Format("15:04:05"), time.Since(r.Started).Round(time.Second), r.Sessions)
+			rt := r.Runtime
+			fmt.Fprintf(w, "%d goroutines, %s heap in %d objects (%s from the OS), %d GCs (longest recent pause %.1f ms), %d browsers connected\n",
+				rt.Goroutines, bytesText(int64(rt.HeapBytes)), rt.HeapObjects, bytesText(int64(rt.SysBytes)), rt.GCRuns, rt.GCPauseMS, rt.Streams)
+			if db := rt.DB; db != nil {
+				fmt.Fprintf(w, "database pool: %d of %d open, %d in use, %d idle; %d waits for a connection (%.1f ms)\n", db.Open, db.Max, db.InUse, db.Idle, db.Waits, db.WaitMS)
+			}
+			fmt.Fprintln(w)
 			tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 			fmt.Fprintln(tw, "EVENT\tKEY\tCOUNT\tLAST MIN\tERRORS\tMEAN MS\tP95 MS\tMAX MS\tQUERIES EACH\t")
 			for _, s := range r.Events {

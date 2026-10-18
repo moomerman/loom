@@ -3,6 +3,7 @@ package loom
 import (
 	"encoding/json"
 	"net/http"
+	"runtime"
 	"sort"
 	"strconv"
 	"time"
@@ -25,6 +26,34 @@ type StatsResult struct {
 	Started  time.Time    `json:"started"`
 	Sessions int          `json:"sessions"` // live pages open now
 	Events   []trace.Stat `json:"events"`   // by name, and by route, job type or table
+	Runtime  RuntimeInfo  `json:"runtime"`
+}
+
+// RuntimeInfo is the process as it is now: goroutines, memory and the
+// garbage collector, the browsers connected, and the database pool. A
+// number that only grows across `loom stats` calls is a leak; a pool
+// whose waits grow is short of connections (Config.DBMaxConns).
+type RuntimeInfo struct {
+	Goroutines  int    `json:"goroutines"`
+	HeapBytes   uint64 `json:"heap_bytes"` // allocated and still in use
+	HeapObjects uint64 `json:"heap_objects"`
+	SysBytes    uint64 `json:"sys_bytes"` // obtained from the OS
+	GCRuns      uint32 `json:"gc_runs"`
+	// GCPauseMS is the longest of the last 256 collections' pauses.
+	GCPauseMS float64 `json:"gc_pause_ms"`
+	Streams   int     `json:"streams"` // open SSE streams: browsers connected
+	// DB is the connection pool, absent without a database.
+	DB *DBPoolInfo `json:"db,omitempty"`
+}
+
+// DBPoolInfo is database/sql's view of the app's connection pool.
+type DBPoolInfo struct {
+	Max    int     `json:"max"` // Config.DBMaxConns
+	Open   int     `json:"open"`
+	InUse  int     `json:"in_use"`
+	Idle   int     `json:"idle"`
+	Waits  int64   `json:"waits"`   // times a statement waited for a connection, since the start
+	WaitMS float64 `json:"wait_ms"` // how long those waits took, in all
 }
 
 // QueriesResult counts the statements the app's database ran since it
@@ -102,7 +131,26 @@ func (a *App) Stats() StatsResult {
 	a.mu.Lock()
 	n := len(a.sessions)
 	a.mu.Unlock()
-	return StatsResult{Started: a.started.UTC(), Sessions: n, Events: a.stream.Stats()}
+	return StatsResult{Started: a.started.UTC(), Sessions: n, Events: a.stream.Stats(), Runtime: a.runtimeInfo()}
+}
+
+func (a *App) runtimeInfo() RuntimeInfo {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	info := RuntimeInfo{Goroutines: runtime.NumGoroutine(), HeapBytes: m.HeapAlloc, HeapObjects: m.HeapObjects, SysBytes: m.Sys, GCRuns: m.NumGC}
+	var pause uint64
+	for _, p := range m.PauseNs {
+		pause = max(pause, p)
+	}
+	info.GCPauseMS = trace.Millis(time.Duration(pause))
+	for _, s := range a.Sessions() {
+		info.Streams += s.Connected
+	}
+	if a.db != nil && a.db.SQL() != nil {
+		st := a.db.SQL().Stats()
+		info.DB = &DBPoolInfo{Max: st.MaxOpenConnections, Open: st.OpenConnections, InUse: st.InUse, Idle: st.Idle, Waits: st.WaitCount, WaitMS: trace.Millis(st.WaitDuration)}
+	}
+	return info
 }
 
 // Queries counts the statements the app's database ran since it

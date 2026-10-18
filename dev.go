@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"regexp"
 	"sort"
 	"strings"
@@ -253,6 +254,18 @@ func (a *App) devMux() *http.ServeMux {
 		}
 		writeJSON(w, st)
 	})
+	// The Go profiler, for `go tool pprof http://localhost:4000/_loom/dev/pprof/profile`.
+	m.HandleFunc("GET /_loom/dev/pprof/", func(w http.ResponseWriter, r *http.Request) {
+		if name := strings.TrimPrefix(r.URL.Path, "/_loom/dev/pprof/"); name != "" {
+			pprof.Handler(name).ServeHTTP(w, r) // heap, goroutine, allocs, block, mutex, threadcreate
+			return
+		}
+		pprof.Index(w, r)
+	})
+	m.HandleFunc("GET /_loom/dev/pprof/cmdline", pprof.Cmdline)
+	m.HandleFunc("GET /_loom/dev/pprof/profile", pprof.Profile)
+	m.HandleFunc("GET /_loom/dev/pprof/symbol", pprof.Symbol)
+	m.HandleFunc("GET /_loom/dev/pprof/trace", pprof.Trace)
 	m.HandleFunc("GET /_loom/dev/topics", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.Topics())
 	})
@@ -298,7 +311,8 @@ func (a *App) inspectRequest(r *http.Request) bool {
 // show users' data or change things.
 var inspected = map[string]bool{
 	"routes": true, "manifest": true, "validate": true, "sessions": true, "errors": true, "events": true,
-	"stats": true, "queries": true, "db/stats": true, "topics": true, "jobs": true, "queues": true, "nodes": true, "cron": true,
+	"stats": true, "queries": true, "db/stats": true, "topics": true,
+	"pprof/heap": true, "pprof/allocs": true, "pprof/goroutine": true, // CPU profiles and traces stay dev-only: they cost while they run "jobs": true, "queues": true, "nodes": true, "cron": true,
 }
 
 var jobPath = regexp.MustCompile(`^jobs/[0-9]+$`)

@@ -249,6 +249,12 @@ func TestDevEvents(t *testing.T) {
 	if stats.Sessions != 1 || len(stats.Events) == 0 {
 		t.Errorf("stats = %+v", stats)
 	}
+	if stats.Runtime.Goroutines == 0 || stats.Runtime.HeapBytes == 0 {
+		t.Errorf("runtime = %+v", stats.Runtime)
+	}
+	if code := getJSON(t, srv.URL+"/_loom/dev/pprof/goroutine?debug=1", nil); code != 200 {
+		t.Errorf("pprof goroutine = %d", code)
+	}
 	byRoute := false
 	for _, s := range stats.Events {
 		if s.Name == trace.PageEvent && s.By == "route" && s.Key != "" && s.Count > 0 && s.LastMinute > 0 {

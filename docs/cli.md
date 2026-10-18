@@ -308,7 +308,7 @@ LOOM_INSPECT_TOKEN=... loom queries --url https://app.example.com
 
 The token reads what the app does and how it performs: `loom routes`,
 `manifest`, `sessions`, `errors`, `events` (and `trace`), `stats`,
-`queries`, `db stats`, `jobs` and `jobs inspect`, `queues`, `nodes`, `cron`, and
+`queries`, `db stats`, the heap and goroutine profiles, `jobs` and `jobs inspect`, `queues`, `nodes`, `cron`, and
 `doctor`'s app checks. Everything that shows a page's state (`loom
 inspect`'s assigns and HTML), renders, sends an event, reads the
 mailbox or storage, or changes a job answers 403 to it: those stay in
@@ -587,8 +587,25 @@ those that time something the total, mean, p95 (within 25%) and max
 queries per page action or job attempt. After 200 keys for one name,
 the rest count as `other`.
 
+`runtime` is the process now: goroutines, the heap, the garbage
+collector's runs and its longest recent pause, the browsers connected
+(`streams`) and the database pool (absent without a database). A
+number that keeps growing between calls is a leak; `waits` growing
+means the pool is short of connections (`Config.DBMaxConns`).
+
+Dev mode also serves Go's profiler at `/_loom/dev/pprof/`:
+`go tool pprof http://localhost:4000/_loom/dev/pprof/profile` for 30
+seconds of CPU, and `heap`, `allocs`, `goroutine`, `block`, `mutex`
+and `trace`. The inspect token reads `heap`, `allocs` and
+`goroutine`; a CPU profile or trace costs while it runs, so those stay
+in dev.
+
 ```json
-{"started": "2026-10-13T14:00:00Z", "sessions": 3, "events": [
+{"started": "2026-10-13T14:00:00Z", "sessions": 3,
+ "runtime": {"goroutines": 41, "heap_bytes": 9123840, "heap_objects": 51200, "sys_bytes": 24117248,
+   "gc_runs": 18, "gc_pause_ms": 0.3, "streams": 3,
+   "db": {"max": 20, "open": 4, "in_use": 1, "idle": 3, "waits": 0, "wait_ms": 0}},
+ "events": [
   {"name": "page.event", "by": "route", "key": "/team/{key}", "errors": 0, "queries": 82, "count": 41, "last_minute": 12,
    "timed": 41, "total_ms": 73.8, "mean_ms": 1.8, "p95_ms": 4.6, "max_ms": 12.4}
 ]}
