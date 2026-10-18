@@ -113,6 +113,10 @@ func TestInspectToken(t *testing.T) {
 		{"GET", "/_loom/dev/errors", token, 200},
 		{"GET", "/_loom/dev/routes", token, 200},
 		{"GET", "/_loom/dev/pprof/heap", token, 200},
+		{"GET", "/_loom/dev/jobs", token, 200},
+		{"GET", "/_loom/dev/queues", token, 200},
+		{"GET", "/_loom/dev/nodes", token, 200},
+		{"GET", "/_loom/dev/cron", token, 200},
 		{"GET", "/_loom/dev/pprof/profile", token, 403},
 		{"GET", "/_loom/dev/sessions/abc", token, 403}, // assigns and HTML
 		{"POST", "/_loom/dev/sessions/abc/event", token, 403},

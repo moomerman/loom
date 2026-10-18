@@ -312,7 +312,8 @@ func (a *App) inspectRequest(r *http.Request) bool {
 var inspected = map[string]bool{
 	"routes": true, "manifest": true, "validate": true, "sessions": true, "errors": true, "events": true,
 	"stats": true, "queries": true, "db/stats": true, "topics": true,
-	"pprof/heap": true, "pprof/allocs": true, "pprof/goroutine": true, // CPU profiles and traces stay dev-only: they cost while they run "jobs": true, "queues": true, "nodes": true, "cron": true,
+	"jobs": true, "queues": true, "nodes": true, "cron": true,
+	"pprof/heap": true, "pprof/allocs": true, "pprof/goroutine": true, // CPU profiles and traces stay dev-only: they cost while they run
 }
 
 var jobPath = regexp.MustCompile(`^jobs/[0-9]+$`)
