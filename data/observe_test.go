@@ -117,3 +117,46 @@ func TestQueryStats(t *testing.T) {
 		}
 	}
 }
+
+// Postgres's own counts show a table read by sequential scans of many
+// rows, with a warning naming it.
+func TestServerStats(t *testing.T) {
+	db := dbs(t)["postgres"]
+	if db == nil {
+		t.Skip("needs LOOM_TEST_DATABASE_URL")
+	}
+	ctx := context.Background()
+	mustExec := func(q string) {
+		t.Helper()
+		if _, err := db.Exec(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustExec(`DROP TABLE IF EXISTS stats_scanned`)
+	mustExec(`CREATE TABLE stats_scanned (id bigint PRIMARY KEY, n int)`)
+	t.Cleanup(func() { db.Exec(ctx, `DROP TABLE stats_scanned`) })
+	mustExec(`INSERT INTO stats_scanned SELECT g, g FROM generate_series(1, 3000) g`)
+	for range 3 {
+		mustExec(`SELECT count(*) FROM stats_scanned WHERE n = 7`) // n has no index
+	}
+	var got data.TableStat
+	for range 50 { // Postgres publishes its counts a moment after each transaction
+		mustExec(`SELECT pg_stat_force_next_flush()`)
+		st, err := db.Stats(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, tb := range st.Tables {
+			if tb.Name == "stats_scanned" {
+				got = tb
+			}
+		}
+		if got.SeqScans >= 3 {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if got.SeqScans < 3 || got.SeqRows < 9000 || !strings.Contains(got.Warning, "stats_scanned has no index") {
+		t.Errorf("stats_scanned: %+v", got)
+	}
+}

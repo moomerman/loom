@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/moomerman/loom"
+	"github.com/moomerman/loom/data"
 	"github.com/moomerman/loom/trace"
 )
 
@@ -261,4 +262,63 @@ func runQueries(args []string, stdout, stderr io.Writer) int {
 			return nil
 		}, err
 	})
+}
+
+// runDBStats asks the running app for its database's own statistics, so
+// it works against a deployed app with its inspect token, whose
+// database the CLI can't reach.
+func runDBStats(args []string, stdout, stderr io.Writer) int {
+	return introspect("db stats", "db stats [--json] [--url URL] [--token TOKEN]", args, stdout, stderr, 0, func(c *devClient, _ []string) ([]byte, func(io.Writer) error, error) {
+		body, err := c.do("GET", "/_loom/dev/db/stats", nil)
+		return body, func(w io.Writer) error {
+			var r data.ServerStats
+			if err := json.Unmarshal(body, &r); err != nil {
+				return err
+			}
+			if r.Since != nil {
+				fmt.Fprintf(w, "Postgres's counts since %s\n\n", r.Since.Local().Format("2006-01-02 15:04"))
+			}
+			tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+			fmt.Fprintln(tw, "TABLE\tROWS\tSIZE\tSEQ SCANS\tSEQ ROWS\tINDEX SCANS\tINSERTS\tUPDATES\tDELETES")
+			for _, t := range r.Tables {
+				fmt.Fprintf(tw, "%s\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\n", t.Name, t.Rows, bytesText(t.Bytes), t.SeqScans, t.SeqRows, t.IndexScans, t.Inserts, t.Updates, t.Deletes)
+			}
+			if err := tw.Flush(); err != nil {
+				return err
+			}
+			for _, t := range r.Tables {
+				if t.Warning != "" {
+					fmt.Fprintf(w, "\nwarning: %s: %s\n", t.Name, t.Warning)
+				}
+			}
+			fmt.Fprintln(w)
+			if r.StatementsNote != "" {
+				fmt.Fprintln(w, r.StatementsNote)
+				return nil
+			}
+			tw = tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+			fmt.Fprintln(tw, "TOTAL MS\tCALLS\tMEAN MS\tROWS\tSTATEMENT (pg_stat_statements)")
+			for _, s := range r.Statements {
+				text := s.Query
+				if len(text) > 100 {
+					text = text[:100] + "…"
+				}
+				fmt.Fprintf(tw, "%.1f\t%d\t%.1f\t%d\t%s\n", s.TotalMS, s.Calls, s.MeanMS, s.Rows, text)
+			}
+			return tw.Flush()
+		}, err
+	})
+}
+
+// bytesText is a size for people: 12 kB, 3.4 MB.
+func bytesText(n int64) string {
+	switch {
+	case n >= 1<<30:
+		return fmt.Sprintf("%.1f GB", float64(n)/(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%d kB", n>>10)
+	}
+	return fmt.Sprintf("%d B", n)
 }

@@ -38,9 +38,11 @@ func runDB(args []string, stdout, stderr io.Writer) int {
 			return runDBSchema(args[1:], stdout, stderr)
 		case "query":
 			return runDBQuery(args[1:], stdout, stderr)
+		case "stats":
+			return runDBStats(args[1:], stdout, stderr)
 		}
 	}
-	fmt.Fprint(stderr, "usage: loom db new|install|schema|query [--json] ...\n\nRun \"loom help\" for details.\n")
+	fmt.Fprint(stderr, "usage: loom db new|install|schema|query|stats [--json] ...\n\nRun \"loom help\" for details.\n")
 	return 2
 }
 

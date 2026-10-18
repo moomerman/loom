@@ -90,7 +90,10 @@ err := db.Tx(ctx, func(tx loom.Tx) error {
   that runs twelve times a second is the top line there, though it is
   never slow enough for `db.slow`. Code that must run SQL on
   `db.SQL()` directly counts it with `db.Record(ctx, query, start,
-  rows, err)`.
+  rows, err)`. Postgres's side, each table's sequential and index scans
+  and `pg_stat_statements` when installed, is `loom db stats`
+  (`db.Stats(ctx)`), which warns of a table read by large sequential
+  scans: a query with no index it can use.
 
 ## Errors
 

@@ -54,6 +54,11 @@ func TestEventsCommands(t *testing.T) {
 	if code != 0 || json.Unmarshal([]byte(out), &q) != nil || q.Queries == nil {
 		t.Errorf("queries --json: %d %q", code, out)
 	}
+	// This app has no database, so db stats answers DB602.
+	code, out, _ = runCmd(runDBStats, "--url", url)
+	if code != 1 || !strings.Contains(out, "DB602") {
+		t.Errorf("db stats: %d %q", code, out)
+	}
 }
 
 func itoa(n uint64) string { b, _ := json.Marshal(n); return string(b) }

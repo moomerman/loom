@@ -73,6 +73,7 @@ Database (--db URL, default $DATABASE_URL; --dir DIR, default migrations):
   loom migrate status              list applied, pending and edited migrations
   loom db schema                   tables, columns, types and tracked tables
   loom db query [--limit N] SQL    run a query in a read-only transaction
+  loom db stats                    the database's own counts: scans per table, pg_stat_statements
 
 Components (the starter kit; --dir DIR, default components):
   loom components [--json]         list the kit's components and their parameters

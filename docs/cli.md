@@ -269,7 +269,9 @@ fix them, each with a fix: the templates type-check and their generated
 code is current (`loom build`), `DATABASE_URL` reaches Postgres and no
 migration is pending or edited, Chrome and `.mcp.json` are found, and,
 if the app answers at `--url`, its `/_loom/health` and, in dev, its
-startup checks (`app.Validate`, via `GET /_loom/dev/validate`). Exits 1
+startup checks (`app.Validate`, via `GET /_loom/dev/validate`) and
+that no table is read mostly by large sequential scans (`scans`, from
+`loom db stats`). Exits 1
 if any check fails. A check that couldn't run (no app, no database) is
 `ok` with a message saying so; Chrome and `.mcp.json` are advice, never
 failures.
@@ -306,7 +308,7 @@ LOOM_INSPECT_TOKEN=... loom queries --url https://app.example.com
 
 The token reads what the app does and how it performs: `loom routes`,
 `manifest`, `sessions`, `errors`, `events` (and `trace`), `stats`,
-`queries`, `jobs` and `jobs inspect`, `queues`, `nodes`, `cron`, and
+`queries`, `db stats`, `jobs` and `jobs inspect`, `queues`, `nodes`, `cron`, and
 `doctor`'s app checks. Everything that shows a page's state (`loom
 inspect`'s assigns and HTML), renders, sends an event, reads the
 mailbox or storage, or changes a job answers 403 to it: those stay in
@@ -981,6 +983,34 @@ then rolls it back; writes fail. For development.
 Values are JSON numbers, strings, booleans, null, or RFC 3339 times.
 `truncated` is true when there were more than `--limit` rows.
 
+### loom db stats
+
+```
+loom db stats [--json] [--url URL] [--token TOKEN]
+                              GET /_loom/dev/db/stats
+```
+
+Postgres's own counts, asked of the running app (so a deployed app's
+inspect token works where the CLI can't reach its database): each table
+in the schema with its rows, size, sequential scans and the rows they
+read, index scans, inserts, updates and deletes, the most rows read by
+sequential scans first; and, when the `pg_stat_statements` extension is
+installed, its 25 busiest statements across every node.
+
+```json
+{"since": "2026-10-13T09:00:00Z", "tables": [
+  {"name": "loom_jobs", "rows": 52000, "bytes": 18874368, "seq_scans": 41000, "seq_rows": 2132000000,
+   "index_scans": 12, "inserts": 52000, "updates": 104000, "deletes": 0,
+   "warning": "41000 sequential scans read about 52000 rows each, ..."}],
+ "statements": [], "statements_note": "pg_stat_statements isn't installed: ..."}
+```
+
+`warning` is set when a table's sequential scans outnumber its index
+scans and read 1000 rows or more each: a query on it has no index it
+can use. `loom doctor` fails its `scans` check then. Find the query in
+`loom queries` and see its plan with `loom db query "EXPLAIN ..."`.
+The counts are Postgres's since `since`, its last reset.
+
 ## Components
 
 ```
@@ -1129,6 +1159,7 @@ is returned with `isError` and the `{"code", "message", "fix"}` JSON.
 | `migrate` | | `loom migrate` (needs no app) |
 | `migrate_status` | | `loom migrate status` (needs no app) |
 | `db_query` | `sql`, `limit` | `loom db query` (needs no app) |
+| `db_stats` | | `loom db stats` |
 
 The database tools use `--db` (default `$DATABASE_URL`) and
 `--migrations` (default `migrations`); a data error is returned with

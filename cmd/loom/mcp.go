@@ -289,6 +289,7 @@ func mcpTools() []mcpTool {
 		}},
 		{Name: "stats", Description: "Count the app's events since it started, by name and by route, job type or table, with errors, the count in the last minute, and mean, p95 and max milliseconds: how often handlers, re-renders, commits and jobs ran and how long they took (`loom stats --json`).", InputSchema: schema(nil, map[string]any{}), call: get("/_loom/dev/stats")},
 		{Name: "queries", Description: "Every SQL statement the app's database ran since it started, Loom's own included, the busiest (by total time) first: count, count in the last minute, mean, p95 and max milliseconds, rows and errors. A fast query that runs many times a second shows here, where db.slow never would (`loom queries --json`).", InputSchema: schema(nil, map[string]any{}), call: get("/_loom/dev/queries")},
+		{Name: "db_stats", Description: "The database's own statistics, through the running app: each table's rows, size, sequential and index scans (with a warning when sequential scans of many rows dominate: a missing index), and, with pg_stat_statements, every statement's totals across nodes (`loom db stats --json`).", InputSchema: schema(nil, map[string]any{}), call: get("/_loom/dev/db/stats")},
 		{Name: "topics", Description: "Map each PubSub topic the open pages subscribe to to the sessions subscribed (GET /_loom/dev/topics): who hears a broadcast.", InputSchema: schema(nil, map[string]any{}), call: get("/_loom/dev/topics")},
 		{
 			Name:        "doctor",

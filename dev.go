@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/moomerman/loom/data"
 	"github.com/moomerman/loom/render"
 	"github.com/moomerman/loom/trace"
 )
@@ -236,6 +237,22 @@ func (a *App) devMux() *http.ServeMux {
 	m.HandleFunc("GET /_loom/dev/queries", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.Queries())
 	})
+	m.HandleFunc("GET /_loom/dev/db/stats", func(w http.ResponseWriter, r *http.Request) {
+		db := a.db
+		if db == nil {
+			db = data.NewLocal()
+		}
+		st, err := db.Stats(r.Context())
+		if err != nil {
+			e := &Error{Code: data.DB601, Msg: "reading the database's statistics: " + err.Error(), Fix: "check the database is reachable; the app's log has details"}
+			if de := (*data.Error)(nil); errors.As(err, &de) {
+				e = &Error{Code: de.Code, Msg: de.Msg, Fix: de.Fix}
+			}
+			writeError(w, http.StatusInternalServerError, e)
+			return
+		}
+		writeJSON(w, st)
+	})
 	m.HandleFunc("GET /_loom/dev/topics", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.Topics())
 	})
@@ -281,7 +298,7 @@ func (a *App) inspectRequest(r *http.Request) bool {
 // show users' data or change things.
 var inspected = map[string]bool{
 	"routes": true, "manifest": true, "validate": true, "sessions": true, "errors": true, "events": true,
-	"stats": true, "queries": true, "topics": true, "jobs": true, "queues": true, "nodes": true, "cron": true,
+	"stats": true, "queries": true, "db/stats": true, "topics": true, "jobs": true, "queues": true, "nodes": true, "cron": true,
 }
 
 var jobPath = regexp.MustCompile(`^jobs/[0-9]+$`)

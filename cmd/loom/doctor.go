@@ -13,6 +13,7 @@ import (
 
 	"github.com/moomerman/loom"
 	"github.com/moomerman/loom/compiler"
+	"github.com/moomerman/loom/data"
 	"github.com/moomerman/loom/preview"
 )
 
@@ -196,5 +197,31 @@ func appChecks(c *devClient) []Check {
 	default:
 		out = append(out, Check{Check: "startup", OK: true, Message: "app.Validate passes: jobs, watched tables, migrations and startup checks"})
 	}
-	return out
+	return append(out, scansCheck(c))
+}
+
+// scansCheck asks the app for Postgres's counts of how each table is
+// read, and fails if one is read mostly by sequential scans of many
+// rows: a query with no index it can use, as loom_jobs's fetch once was.
+func scansCheck(c *devClient) Check {
+	body, err := c.do("GET", "/_loom/dev/db/stats", nil)
+	var st data.ServerStats
+	if err != nil || json.Unmarshal(body, &st) != nil {
+		return Check{Check: "scans", OK: true, Message: "the app has no database, or isn't in dev mode, so its tables' scans weren't checked"}
+	}
+	var warned []string
+	for _, t := range st.Tables {
+		if t.Warning != "" {
+			warned = append(warned, t.Name)
+		}
+	}
+	if len(warned) == 0 {
+		return Check{Check: "scans", OK: true, Message: fmt.Sprintf("%d %s, none read mostly by large sequential scans", len(st.Tables), plural(len(st.Tables), "table"))}
+	}
+	for _, t := range st.Tables {
+		if t.Warning != "" {
+			return Check{Check: "scans", Message: "sequential scans of many rows on " + strings.Join(warned, ", "), Fix: t.Warning}
+		}
+	}
+	return Check{}
 }
