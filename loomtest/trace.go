@@ -125,5 +125,6 @@ func (p *Page) handled(name string, start time.Time, d map[string]any, err error
 	attrs = append(attrs, "ms", time.Since(start), "diff", d != nil, "bytes", bytes, "outcome", outcome, "trace", p.view.Trace())
 	attrs = append(attrs, p.view.Tally().Attrs()...)
 	p.app.Emit(context.Background(), name, attrs...)
+	p.queries, p.queryTime = p.view.Tally().Count()
 	p.view.Tally().Reset() // for the next action
 }

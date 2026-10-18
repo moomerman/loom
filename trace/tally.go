@@ -47,6 +47,14 @@ func (t *Tally) Reset() {
 	t.ns.Store(0)
 }
 
+// Count returns the statements counted and their time.
+func (t *Tally) Count() (int64, time.Duration) {
+	if t == nil {
+		return 0, 0
+	}
+	return t.n.Load(), time.Duration(t.ns.Load())
+}
+
 // Attrs returns the count as event attributes: "queries" and
 // "query_ms".
 func (t *Tally) Attrs() []any {

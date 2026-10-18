@@ -312,6 +312,12 @@ app.Live("/", &TodoPage{}, templates.TodoApp, loom.Watch("todos"))
 - In tests, `p.TableChanged("todos")` re-renders a page as a change to
   the table would. `loom routes` and the manifest show each route's
   watches.
+- A change costs what `Assigns` reads, once per open page. Measure it
+  with a crowd: `loomtest.MountCrowd(t, app, "/", 50).TableChanged("todos")`
+  returns the change's `Load` (pages, queries, their time), so a test
+  can hold the route to a budget: a count shared by every page should
+  be one query per change, not one per page. In a running app, `loom
+  stats` shows `page.watch` by route, per minute, with queries each.
 
 ## Rate limits
 

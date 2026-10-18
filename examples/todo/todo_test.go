@@ -246,3 +246,15 @@ func TestJobsDashboard(t *testing.T) {
 		t.Fatalf("jobs %v, %v", recs, err)
 	}
 }
+
+// Every open page re-reads its todos when the table changes, so a change
+// costs one query per open page: the crowd shows the cost growing with
+// the pages, which one browser in dev never would.
+func TestTodoCrowd(t *testing.T) {
+	app, _ := testApp(t, jobs.RealClock{})
+	c := loomtest.MountCrowd(t, app, "/", 10, loomtest.NoLayout())
+	load := c.TableChanged("todos")
+	if load.Pages != 10 || load.PerPage() != 1 {
+		t.Errorf("a todos change: %s; want one query per page", load)
+	}
+}

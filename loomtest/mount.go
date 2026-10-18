@@ -37,6 +37,9 @@ type Page struct {
 	nav  string         // the last c.Navigate
 	now  time.Time      // the fake clock of the page's timers (Advance)
 	opts options        // how it was mounted, for Navigate
+
+	queries   int64         // statements the latest action ran (Crowd)
+	queryTime time.Duration // and their time
 }
 
 // TimersEpoch is the time a mounted page's fake clock starts at. Page
