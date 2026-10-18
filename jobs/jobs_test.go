@@ -422,7 +422,10 @@ func TestLeaderEnqueuesEachCronTickOnce(t *testing.T) {
 // An idle queue looks for jobs every IdlePollInterval, not every
 // PollInterval, and a new job still wakes it at once.
 func TestIdleQueuePollsSlowly(t *testing.T) {
-	s := &countingStore{MemoryStore: NewMemoryStore(MemoryOptions{})}
+	// Half past the hour: within CronCatchUp of the hour, the built-in
+	// hourly Prune would be enqueued and run, waking the queue.
+	clock := NewFakeClock(time.Date(2026, 10, 18, 12, 30, 0, 0, time.UTC))
+	s := &countingStore{MemoryStore: NewMemoryStore(MemoryOptions{Clock: clock})}
 	r := NewRunner(s)
 	r.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	r.PollInterval = 5 * time.Millisecond
