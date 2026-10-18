@@ -4,7 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"sort"
+	"strings"
 	"sync"
+	"time"
 )
 
 // Slog writes events to a logger: the message is the event's "msg"
@@ -43,59 +45,102 @@ func Slog(l *slog.Logger) Sink {
 	})
 }
 
-// Counters counts events by name, and totals their "ms" attributes.
+// Counters counts events by name and, for the names below, by what
+// they concern: page events by route, job events by job type, table
+// watches by table. So "route / re-rendered 450 times in the last
+// minute" is one line of `loom stats`, not lost in a total.
 type Counters struct {
 	mu    sync.Mutex
-	stats map[string]*Stat
+	stats map[statKey]*counter
+	keys  map[string]int // distinct keys per name, capped at maxKeys
 }
 
-// Stat is the count of one event name since the app started, and the
-// timing of those with an "ms" attribute.
+type statKey struct{ name, key string }
+
+type counter struct {
+	errors uint64
+	timing Timing
+}
+
+// maxKeys caps the keys counted per name; later ones count as "other",
+// so a route or job type per user can't grow the counters without end.
+const maxKeys = 200
+
+// keyAttr is the attribute an event's stats are kept by, if any.
+func keyAttr(name string) string {
+	switch {
+	case strings.HasPrefix(name, "page."), name == LimitRefused:
+		return "route"
+	case strings.HasPrefix(name, "job."), name == CronTick:
+		return "type"
+	case name == WatchNotify:
+		return "table"
+	}
+	return ""
+}
+
+// Stat is the count of one event name, or of one name and key, since
+// the app started, and the timing of those with an "ms" attribute.
 type Stat struct {
-	Name   string  `json:"name"`
-	Count  uint64  `json:"count"`
-	Errors uint64  `json:"errors"`            // at level Error
-	Timed  uint64  `json:"timed,omitempty"`   // how many had "ms"
-	MeanMS float64 `json:"mean_ms,omitempty"` // over Timed
-	MaxMS  float64 `json:"max_ms,omitempty"`
-	totMS  float64
+	Name   string `json:"name"`
+	By     string `json:"by,omitempty"`  // the attribute Key is a value of: route, type or table
+	Key    string `json:"key,omitempty"` // e.g. the route "/team/{key}"
+	Errors uint64 `json:"errors"`        // at level Error
+	TimingSummary
 }
 
 // NewCounters returns empty counters.
-func NewCounters() *Counters { return &Counters{stats: map[string]*Stat{}} }
+func NewCounters() *Counters {
+	return &Counters{stats: map[statKey]*counter{}, keys: map[string]int{}}
+}
 
 // Emit counts e.
 func (c *Counters) Emit(e Event) {
+	k := statKey{name: e.Name}
+	if a := keyAttr(e.Name); a != "" {
+		k.key = e.String(a)
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	s := c.stats[e.Name]
+	s := c.stats[k]
 	if s == nil {
-		s = &Stat{Name: e.Name}
-		c.stats[e.Name] = s
+		if k.key != "" && c.keys[k.name] >= maxKeys {
+			k.key = "other"
+			s = c.stats[k]
+		}
 	}
-	s.Count++
+	if s == nil {
+		s = &counter{}
+		c.stats[k] = s
+		if k.key != "" {
+			c.keys[k.name]++
+		}
+	}
 	if e.Level >= slog.LevelError {
-		s.Errors++
+		s.errors++
 	}
-	if ms, ok := e.Attrs["ms"].(float64); ok {
-		s.Timed++
-		s.totMS += ms
-		s.MaxMS = max(s.MaxMS, ms)
-	}
+	ms, ok := e.Attrs["ms"].(float64)
+	s.timing.Add(e.Time, ms, ok)
 }
 
-// Stats returns a copy of the counts, sorted by name.
-func (c *Counters) Stats() []Stat {
+// Stats returns a copy of the counts as of now, sorted by name, then
+// key.
+func (c *Counters) Stats(now time.Time) []Stat {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	out := make([]Stat, 0, len(c.stats))
-	for _, s := range c.stats {
-		st := *s
-		if st.Timed > 0 {
-			st.MeanMS = float64(int64(st.totMS/float64(st.Timed)*10)) / 10
+	for k, s := range c.stats {
+		st := Stat{Name: k.name, Key: k.key, Errors: s.errors, TimingSummary: s.timing.Summary(now)}
+		if k.key != "" {
+			st.By = keyAttr(k.name)
 		}
 		out = append(out, st)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Name != out[j].Name {
+			return out[i].Name < out[j].Name
+		}
+		return out[i].Key < out[j].Key
+	})
 	return out
 }

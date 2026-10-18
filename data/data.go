@@ -104,6 +104,7 @@ type DB struct {
 	values     map[any]any
 	savepoints int                      // savepoints made in within, for unique names
 	obs        atomic.Pointer[observer] // where it reports (Observe)
+	queries    queryStats               // every statement, by text (QueryStats)
 }
 
 // Open connects to a Postgres database URL with the pgx driver and checks
@@ -200,8 +201,8 @@ func (db *DB) savepoint(ctx context.Context) (func(ok bool) error, error) {
 }
 
 // Exec runs a statement outside a transaction.
-func (db *DB) Exec(ctx context.Context, query string, args ...any) (Result, error) {
-	defer db.timed(ctx, query, time.Now())
+func (db *DB) Exec(ctx context.Context, query string, args ...any) (res Result, err error) {
+	defer db.execDone(ctx, query, time.Now(), &res, &err)
 	switch {
 	case db.within != nil:
 		end, err := db.savepoint(ctx)
@@ -221,8 +222,8 @@ func (db *DB) Exec(ctx context.Context, query string, args ...any) (Result, erro
 }
 
 // Query runs a query outside a transaction.
-func (db *DB) Query(ctx context.Context, query string, args ...any) (Rows, error) {
-	defer db.timed(ctx, query, time.Now())
+func (db *DB) Query(ctx context.Context, query string, args ...any) (rows Rows, err error) {
+	defer db.queryDone(ctx, query, time.Now(), &rows, &err)
 	switch {
 	case db.within != nil:
 		end, err := db.savepoint(ctx)
@@ -260,6 +261,17 @@ type mappedRows struct {
 	*sql.Rows
 	end    func(ok bool) error
 	closed bool
+
+	read  int64            // rows read by Next
+	count func(rows int64) // adds them to the query's stats, once, on Close
+}
+
+func (r *mappedRows) Next() bool {
+	if r.Rows.Next() {
+		r.read++
+		return true
+	}
+	return false
 }
 
 func (r *mappedRows) Scan(dest ...any) error { return MapError(r.Rows.Scan(dest...)) }
@@ -267,6 +279,10 @@ func (r *mappedRows) Err() error             { return MapError(r.Rows.Err()) }
 
 func (r *mappedRows) Close() error {
 	err := r.Rows.Close()
+	if r.count != nil {
+		r.count(r.read)
+		r.count = nil
+	}
 	if r.end != nil && !r.closed {
 		r.closed = true
 		ok := err == nil && r.Rows.Err() == nil
@@ -404,22 +420,22 @@ func (t *tx) check() error {
 	return nil
 }
 
-func (t *tx) Exec(ctx context.Context, query string, args ...any) (Result, error) {
+func (t *tx) Exec(ctx context.Context, query string, args ...any) (res Result, err error) {
 	if err := t.check(); err != nil {
 		return nil, err
 	}
 	t.statements.Add(1)
-	defer t.db.timed(ctx, query, time.Now())
-	res, err := t.sql.ExecContext(ctx, query, args...)
-	return res, mapQueryError(err, query)
+	defer t.db.execDone(ctx, query, time.Now(), &res, &err)
+	r, err := t.sql.ExecContext(ctx, query, args...)
+	return r, mapQueryError(err, query)
 }
 
-func (t *tx) Query(ctx context.Context, query string, args ...any) (Rows, error) {
+func (t *tx) Query(ctx context.Context, query string, args ...any) (rows Rows, err error) {
 	if err := t.check(); err != nil {
 		return nil, err
 	}
 	t.statements.Add(1)
-	defer t.db.timed(ctx, query, time.Now())
+	defer t.db.queryDone(ctx, query, time.Now(), &rows, &err)
 	return query1(ctx, t.sql, query, args)
 }
 

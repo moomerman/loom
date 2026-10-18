@@ -42,7 +42,10 @@ checks and regenerates; `loom test` does all three.
 After using a page, run `loom errors`: it shows server errors and, under
 `loom dev`, the browser's script errors too. `loom events` shows what
 the app did (handlers, commits, jobs), and `loom trace ID` one click's
-whole story; when something is off, start with `loom doctor`. In an event handler,
+whole story. `loom stats` counts events by route and job type, and
+`loom queries` every SQL statement, with rates and timings: read both
+after a change that touches a watched route, a job or a query. When
+something is off, start with `loom doctor`. In an event handler,
 report a failed write with `c.Fail(err)` and tell the user in the
 assigns; never drop an error.
 

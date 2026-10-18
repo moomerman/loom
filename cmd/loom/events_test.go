@@ -45,6 +45,15 @@ func TestEventsCommands(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "1 live pages open") || !strings.Contains(out, "page.event") {
 		t.Errorf("stats: %d %q", code, out)
 	}
+	code, out, _ = runCmd(runQueries, "--url", url)
+	if code != 0 || !strings.Contains(out, "the busiest first") {
+		t.Errorf("queries: %d %q", code, out)
+	}
+	code, out, _ = runCmd(runQueries, "--url", url, "--json")
+	var q loom.QueriesResult
+	if code != 0 || json.Unmarshal([]byte(out), &q) != nil || q.Queries == nil {
+		t.Errorf("queries --json: %d %q", code, out)
+	}
 }
 
 func itoa(n uint64) string { b, _ := json.Marshal(n); return string(b) }

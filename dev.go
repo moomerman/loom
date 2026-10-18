@@ -233,6 +233,9 @@ func (a *App) devMux() *http.ServeMux {
 	m.HandleFunc("GET /_loom/dev/stats", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.Stats())
 	})
+	m.HandleFunc("GET /_loom/dev/queries", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, a.Queries())
+	})
 	m.HandleFunc("GET /_loom/dev/topics", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.Topics())
 	})

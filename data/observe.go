@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/moomerman/loom/trace"
@@ -24,14 +23,33 @@ func (db *DB) Observe(stream *trace.Stream, slow time.Duration) {
 	db.obs.Store(&observer{stream: stream, slow: slow})
 }
 
-// timed reports a statement that started at start, if it was slow.
-// Deferred with the start time, it times the statement's call.
-func (db *DB) timed(ctx context.Context, query string, start time.Time) {
+// execDone counts a statement that started at start, with the rows it
+// changed, and reports it if it was slow. Deferred with the start time
+// and the statement's results, it times the call.
+func (db *DB) execDone(ctx context.Context, query string, start time.Time, res *Result, err *error) {
+	var n int64
+	if *err == nil && *res != nil {
+		n, _ = (*res).RowsAffected()
+	}
+	db.Record(ctx, query, start, n, *err)
+}
+
+// queryDone is execDone for a query: the rows it returns are counted as
+// they are read, when the rows close.
+func (db *DB) queryDone(ctx context.Context, query string, start time.Time, rows *Rows, err *error) {
+	db.Record(ctx, query, start, 0, *err)
+	if r, ok := (*rows).(*mappedRows); ok && *err == nil {
+		r.count = func(n int64) { db.queries.addRows(query, n) }
+	}
+}
+
+// slowly reports a statement that ran for d, if that was slow.
+func (db *DB) slowly(ctx context.Context, query string, d time.Duration) {
 	o := db.obs.Load()
 	if o == nil || o.slow <= 0 {
 		return
 	}
-	if d := time.Since(start); d >= o.slow {
+	if d >= o.slow {
 		o.stream.Emit(ctx, trace.DBSlow, "ms", d, "query", shortQuery(query))
 	}
 }
@@ -53,7 +71,7 @@ func (db *DB) finished(t *tx, start time.Time, reason string) {
 // shortQuery is a statement as an event shows it: on one line, cut
 // after 200 bytes. Arguments are never shown.
 func shortQuery(q string) string {
-	q = strings.Join(strings.Fields(q), " ")
+	q = oneLine(q)
 	if len(q) > 200 {
 		q = q[:200] + "…"
 	}

@@ -46,7 +46,8 @@ Check templates with `go run ./cmd/loom check --json`. Run an app with
 `loom dev`, then ask it about itself with `loom routes`, `loom sessions`,
 `loom inspect SID`, `loom render COMPONENT`, `loom errors`, `loom jobs`,
 `loom queues`, `loom nodes`, `loom cron` and `loom storage` (all with `--json`); see what it did with
-`loom events`, `loom trace ID` and `loom stats`, and check everything at
+`loom events`, `loom trace ID` and `loom stats`, see the database's load
+with `loom queries`, and check everything at
 once with `loom doctor`. See the database with
 `loom db schema` and `loom migrate status`. List the starter kit's
 components with `loom components --json` and copy them into an app with

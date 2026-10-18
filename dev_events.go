@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/moomerman/loom/data"
 	"github.com/moomerman/loom/trace"
 )
 
@@ -23,7 +24,15 @@ type EventsResult struct {
 type StatsResult struct {
 	Started  time.Time    `json:"started"`
 	Sessions int          `json:"sessions"` // live pages open now
-	Events   []trace.Stat `json:"events"`   // by name
+	Events   []trace.Stat `json:"events"`   // by name, and by route, job type or table
+}
+
+// QueriesResult counts the statements the app's database ran since it
+// started, for `loom queries`: Loom's own (the job store, sessions,
+// rate limits) as well as the app's.
+type QueriesResult struct {
+	Started time.Time        `json:"started"`
+	Queries []data.QueryStat `json:"queries"` // the busiest first, by total time
 }
 
 // eventFilter reads a trace.Filter from a request's query.
@@ -94,6 +103,16 @@ func (a *App) Stats() StatsResult {
 	n := len(a.sessions)
 	a.mu.Unlock()
 	return StatsResult{Started: a.started.UTC(), Sessions: n, Events: a.stream.Stats()}
+}
+
+// Queries counts the statements the app's database ran since it
+// started, the busiest first. It is empty without a database.
+func (a *App) Queries() QueriesResult {
+	res := QueriesResult{Started: a.started.UTC(), Queries: []data.QueryStat{}}
+	if a.db != nil {
+		res.Queries = a.db.QueryStats()
+	}
+	return res
 }
 
 // Topics maps each PubSub topic the open pages subscribe to to the

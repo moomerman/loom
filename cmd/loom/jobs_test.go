@@ -246,7 +246,7 @@ func TestMCP(t *testing.T) {
 	for _, tl := range tools {
 		names = append(names, tl.(map[string]any)["name"].(string))
 	}
-	if got := strings.Join(names, " "); got != "check docs build test dev_status components components_add manifest_diff manifest routes sessions inspect_session render_component previews preview_screenshot send_event recent_errors events trace stats topics doctor mail storage_list jobs_list jobs_inspect jobs_retry jobs_cancel jobs_delete jobs_retry_discarded jobs_enqueue queues nodes cron cron_run db_schema migrate migrate_status db_query" {
+	if got := strings.Join(names, " "); got != "check docs build test dev_status components components_add manifest_diff manifest routes sessions inspect_session render_component previews preview_screenshot send_event recent_errors events trace stats queries topics doctor mail storage_list jobs_list jobs_inspect jobs_retry jobs_cancel jobs_delete jobs_retry_discarded jobs_enqueue queues nodes cron cron_run db_schema migrate migrate_status db_query" {
 		t.Errorf("tools: %s", got)
 	}
 	if s, isErr := text(2); isErr || !strings.Contains(s, `"id": 1`) {

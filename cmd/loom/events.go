@@ -190,16 +190,63 @@ func runStats(args []string, stdout, stderr io.Writer) int {
 				return err
 			}
 			fmt.Fprintf(w, "since %s (%s), %d live pages open\n\n", r.Started.Local().Format("15:04:05"), time.Since(r.Started).Round(time.Second), r.Sessions)
-			tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', tabwriter.AlignRight)
-			fmt.Fprintln(tw, "EVENT\tCOUNT\tERRORS\tMEAN MS\tMAX MS\t")
+			tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+			fmt.Fprintln(tw, "EVENT\tKEY\tCOUNT\tLAST MIN\tERRORS\tMEAN MS\tP95 MS\tMAX MS\t")
 			for _, s := range r.Events {
-				mean, most := "-", "-"
-				if s.Timed > 0 {
-					mean, most = fmt.Sprintf("%.1f", s.MeanMS), fmt.Sprintf("%.1f", s.MaxMS)
-				}
-				fmt.Fprintf(tw, "%s\t%d\t%d\t%s\t%s\t\n", s.Name, s.Count, s.Errors, mean, most)
+				mean, p95, most := timings(s.TimingSummary)
+				fmt.Fprintf(tw, "%s\t%s\t%d\t%d\t%d\t%s\t%s\t%s\t\n", s.Name, s.Key, s.Count, s.LastMinute, s.Errors, mean, p95, most)
 			}
 			return tw.Flush()
+		}, err
+	})
+}
+
+// timings formats a summary's mean, p95 and max, or dashes if nothing
+// was timed.
+func timings(s trace.TimingSummary) (mean, p95, most string) {
+	if s.Timed == 0 {
+		return "-", "-", "-"
+	}
+	return fmt.Sprintf("%.1f", s.MeanMS), fmt.Sprintf("%.1f", s.P95MS), fmt.Sprintf("%.1f", s.MaxMS)
+}
+
+// queriesShown is how many statements `loom queries` prints; --json
+// has them all.
+const queriesShown = 25
+
+func runQueries(args []string, stdout, stderr io.Writer) int {
+	return introspect("queries", "queries [--json] [--url URL]", args, stdout, stderr, 0, func(c *devClient, _ []string) ([]byte, func(io.Writer) error, error) {
+		data, err := c.do("GET", "/_loom/dev/queries", nil)
+		return data, func(w io.Writer) error {
+			var r loom.QueriesResult
+			if err := json.Unmarshal(data, &r); err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "since %s (%s), the busiest first\n\n", r.Started.Local().Format("15:04:05"), time.Since(r.Started).Round(time.Second))
+			if len(r.Queries) == 0 {
+				fmt.Fprintln(w, "no statements yet (or no database)")
+				return nil
+			}
+			tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+			fmt.Fprintln(tw, "TOTAL MS\tCOUNT\tLAST MIN\tMEAN MS\tP95 MS\tMAX MS\tROWS\tERRORS\tQUERY")
+			for i, q := range r.Queries {
+				if i == queriesShown {
+					break
+				}
+				mean, p95, most := timings(q.TimingSummary)
+				text := q.Query
+				if len(text) > 100 {
+					text = text[:100] + "…"
+				}
+				fmt.Fprintf(tw, "%.1f\t%d\t%d\t%s\t%s\t%s\t%d\t%d\t%s\n", q.TotalMS, q.Count, q.LastMinute, mean, p95, most, q.Rows, q.Errors, text)
+			}
+			if err := tw.Flush(); err != nil {
+				return err
+			}
+			if n := len(r.Queries) - queriesShown; n > 0 {
+				fmt.Fprintf(w, "\n%d more; --json lists them all\n", n)
+			}
+			return nil
 		}, err
 	})
 }

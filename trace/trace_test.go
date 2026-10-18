@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"regexp"
@@ -140,12 +141,47 @@ func TestSlog(t *testing.T) {
 
 func TestStats(t *testing.T) {
 	s := trace.NewStream()
+	now := time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)
+	s.SetClock(func() time.Time { return now })
 	for _, ms := range []float64{1, 3} {
-		s.Emit(context.Background(), trace.PageEvent, "ms", ms)
+		s.Emit(context.Background(), trace.PageEvent, "ms", ms, "route", "/")
 	}
+	s.Emit(context.Background(), trace.PageEvent, "ms", 5.0, "route", "/team/{key}")
 	s.Emit(context.Background(), trace.Error)
+	now = now.Add(2 * time.Minute)
+	s.Emit(context.Background(), trace.PageEvent, "ms", 2.0, "route", "/")
 	got := s.Stats()
-	if len(got) != 2 || got[0].Name != "error" || got[0].Errors != 1 || got[1].Count != 2 || got[1].MeanMS != 2 || got[1].MaxMS != 3 {
-		t.Errorf("stats = %+v", got)
+	if len(got) != 3 {
+		t.Fatalf("stats = %+v", got)
+	}
+	if e := got[0]; e.Name != "error" || e.Errors != 1 || e.Key != "" {
+		t.Errorf("error stat = %+v", e)
+	}
+	root := got[1]
+	if root.Key != "/" || root.By != "route" || root.Count != 3 || root.LastMinute != 1 || root.MeanMS != 2 || root.MaxMS != 3 || root.TotalMS != 6 {
+		t.Errorf("/ stat = %+v", root)
+	}
+	if root.P95MS < 2.4 || root.P95MS > 3 {
+		t.Errorf("/ p95 = %v, want about 3", root.P95MS)
+	}
+	if team := got[2]; team.Key != "/team/{key}" || team.Count != 1 {
+		t.Errorf("team stat = %+v", team)
+	}
+}
+
+func TestStatsCapKeys(t *testing.T) {
+	s := trace.NewStream()
+	for i := range 250 {
+		s.Emit(context.Background(), trace.JobFinish, "type", fmt.Sprint("t", i))
+	}
+	got := s.Stats()
+	var other trace.Stat
+	for _, st := range got {
+		if st.Key == "other" {
+			other = st
+		}
+	}
+	if len(got) != 201 || other.Count != 50 {
+		t.Errorf("%d stats, other = %+v", len(got), other)
 	}
 }

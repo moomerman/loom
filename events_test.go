@@ -249,6 +249,20 @@ func TestDevEvents(t *testing.T) {
 	if stats.Sessions != 1 || len(stats.Events) == 0 {
 		t.Errorf("stats = %+v", stats)
 	}
+	byRoute := false
+	for _, s := range stats.Events {
+		if s.Name == trace.PageEvent && s.By == "route" && s.Key != "" && s.Count > 0 && s.LastMinute > 0 {
+			byRoute = true
+		}
+	}
+	if !byRoute {
+		t.Errorf("no page.event stats by route: %+v", stats.Events)
+	}
+	var queries QueriesResult
+	getJSON(t, srv.URL+"/_loom/dev/queries", &queries)
+	if queries.Queries == nil || queries.Started.IsZero() {
+		t.Errorf("queries = %+v", queries)
+	}
 	var topics map[string][]string
 	getJSON(t, srv.URL+"/_loom/dev/topics", &topics)
 	if len(topics["notes"]) != 1 || topics["notes"][0] != sid {

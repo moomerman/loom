@@ -84,6 +84,13 @@ err := db.Tx(ctx, func(tx loom.Tx) error {
   warning, under the trace of the action that ran it (`events.md`). An
   app's database reports to its stream; another `*loom.DB` does after
   `db.Observe(app.Stream(), slow)`.
+- Every statement is also counted by its text, fast ones too, with its
+  time, rows and errors: `loom queries` (`db.QueryStats()`) lists them
+  the busiest first, Loom's own job polling included. A cheap query
+  that runs twelve times a second is the top line there, though it is
+  never slow enough for `db.slow`. Code that must run SQL on
+  `db.SQL()` directly counts it with `db.Record(ctx, query, start,
+  rows, err)`.
 
 ## Errors
 

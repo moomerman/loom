@@ -287,7 +287,8 @@ func mcpTools() []mcpTool {
 		{Name: "trace", Description: "Show every event of one action, oldest first: a click's handler, its commits, the jobs it enqueued and their attempts, their broadcasts and the re-renders they caused (`loom trace --json ID`). send_event returns the event's trace id; events carry theirs.", InputSchema: schema([]string{"id"}, map[string]any{"id": str("the trace id")}), call: func(c *devClient, args map[string]any) ([]byte, error) {
 			return c.do("GET", "/_loom/dev/events"+eventQuery(0, "", "", argString(args, "id"), ""), nil)
 		}},
-		{Name: "stats", Description: "Count the app's events by name since it started, with errors and mean and max milliseconds: how often handlers, commits and jobs ran and how long they took (`loom stats --json`).", InputSchema: schema(nil, map[string]any{}), call: get("/_loom/dev/stats")},
+		{Name: "stats", Description: "Count the app's events since it started, by name and by route, job type or table, with errors, the count in the last minute, and mean, p95 and max milliseconds: how often handlers, re-renders, commits and jobs ran and how long they took (`loom stats --json`).", InputSchema: schema(nil, map[string]any{}), call: get("/_loom/dev/stats")},
+		{Name: "queries", Description: "Every SQL statement the app's database ran since it started, Loom's own included, the busiest (by total time) first: count, count in the last minute, mean, p95 and max milliseconds, rows and errors. A fast query that runs many times a second shows here, where db.slow never would (`loom queries --json`).", InputSchema: schema(nil, map[string]any{}), call: get("/_loom/dev/queries")},
 		{Name: "topics", Description: "Map each PubSub topic the open pages subscribe to to the sessions subscribed (GET /_loom/dev/topics): who hears a broadcast.", InputSchema: schema(nil, map[string]any{}), call: get("/_loom/dev/topics")},
 		{
 			Name:        "doctor",

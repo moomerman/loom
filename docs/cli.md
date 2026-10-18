@@ -554,14 +554,47 @@ events`.
 loom stats [--json]           GET /_loom/dev/stats
 ```
 
-How often each event happened since the app started, with errors, and
-the mean and max `ms` of those that time something:
+How often each event happened since the app started: by name, and, for
+these names, by what they concern: `page.*` and `limit.refused` by
+route, `job.*` and `cron.tick` by job type, `watch.notify` by table.
+So a route whose watch re-renders hundreds of times a minute, or a job
+type that dominates the queue, is one line. Each has its errors, its
+count in the last minute (`last_minute`, the current rate), and for
+those that time something the total, mean, p95 (within 25%) and max
+`ms`. After 200 keys for one name, the rest count as `other`.
 
 ```json
 {"started": "2026-10-13T14:00:00Z", "sessions": 3, "events": [
-  {"name": "page.event", "count": 41, "errors": 0, "timed": 41, "mean_ms": 1.8, "max_ms": 12.4}
+  {"name": "page.event", "by": "route", "key": "/team/{key}", "errors": 0, "count": 41, "last_minute": 12,
+   "timed": 41, "total_ms": 73.8, "mean_ms": 1.8, "p95_ms": 4.6, "max_ms": 12.4}
 ]}
 ```
+
+### loom queries
+
+```
+loom queries [--json]         GET /_loom/dev/queries
+```
+
+Every SQL statement the app's database ran since the app started, by
+its text on one line (arguments are bound, so this is the statement's
+shape, never its values), the busiest first by total time. Loom's own
+statements are here too: the job runner's fetch and rescue, the node
+heartbeat, sessions and rate limits. The table shows the top 25.
+
+```json
+{"started": "2026-10-13T14:00:00Z", "queries": [
+  {"query": "UPDATE loom_jobs SET state = 'executing', ...", "rows": 3, "errors": 0, "count": 4210, "last_minute": 720,
+   "timed": 4210, "total_ms": 9262.0, "mean_ms": 2.2, "p95_ms": 4.1, "max_ms": 31.0}
+]}
+```
+
+`rows` is what queries returned and statements changed, in all (the job
+store's queries count 0). `last_minute` is the rate: 720 is twelve a
+second. A line near the top whose `mean_ms` is small is a query that
+runs too often; one whose `rows` per call is large reads too much.
+After 500 distinct statements, the rest count as `other`. Use `loom db
+query` with `EXPLAIN` to see how one runs.
 
 ### loom mail
 
@@ -1054,6 +1087,7 @@ is returned with `isError` and the `{"code", "message", "fix"}` JSON.
 | `events` | `since`, `name`, `sid`, `trace`, `level` | `loom events` |
 | `trace` | `id` | `loom trace` |
 | `stats` | | `loom stats` |
+| `queries` | | `loom queries` |
 | `topics` | | `GET /_loom/dev/topics` |
 | `doctor` | `path` | `loom doctor` (asks the app if it runs) |
 | `mail` | | `loom mail` |

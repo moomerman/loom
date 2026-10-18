@@ -43,6 +43,7 @@ Ask a running app in dev mode (default --url $LOOM_URL, or http://localhost:$POR
                                    what the app did: the event stream (docs/events.md)
   loom trace [--json] ID           every event of one action: a click, its commits, jobs
   loom stats [--json]              how often each event happened, and how long it took
+  loom queries [--json]            every statement the database ran: how often, how long
   loom preview [--json]            list components' preview variants
                                    (the gallery is at /_loom/preview)
   loom preview screenshot [--variant NAME] [--theme light|dark] [--out DIR] [COMPONENT]
@@ -139,6 +140,8 @@ func run(args []string) int {
 		return runTrace(args[1:], os.Stdout, os.Stderr)
 	case "stats":
 		return runStats(args[1:], os.Stdout, os.Stderr)
+	case "queries":
+		return runQueries(args[1:], os.Stdout, os.Stderr)
 	case "doctor":
 		return runDoctor(args[1:], os.Stdout, os.Stderr)
 	case "jobs":

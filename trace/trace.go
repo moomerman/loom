@@ -196,12 +196,16 @@ func (s *Stream) Subscribe(f Filter) (<-chan Event, func()) {
 }
 
 // Stats returns the counts and timings of every event name emitted so
-// far, sorted by name.
+// far, by route, job type or table where the name has one (Counters),
+// sorted by name, then key.
 func (s *Stream) Stats() []Stat {
 	if s == nil {
 		return nil
 	}
-	return s.counters.Stats()
+	s.mu.RLock()
+	now := s.now()
+	s.mu.RUnlock()
+	return s.counters.Stats(now)
 }
 
 // SetClock replaces the stream's clock, for tests.

@@ -141,7 +141,8 @@ In production:
 - What the app does (loads, clicks, commits, jobs, refusals, errors) is
   one stream of named events, logged to `Logger` and passed to
   `OnEvent` for an error tracker or metrics; `loom events`, `loom
-  trace` and `loom stats` read it. See `events.md`.
+  trace` and `loom stats` read it, and `loom queries` counts the
+  database's statements. See `events.md`.
 
 ## Events
 

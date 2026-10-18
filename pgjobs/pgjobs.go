@@ -90,6 +90,50 @@ func (s *Store) Observe(stream *trace.Stream) { s.events.Store(stream) }
 // DB returns the store's database.
 func (s *Store) DB() *data.DB { return s.ldb }
 
+// sqlRunner runs SQL: *sql.DB, *sql.Tx and *sql.Conn all do.
+type sqlRunner interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// recorder runs SQL on a database/sql handle and counts each statement
+// in the DB's query stats (data.DB.Record), as the DB's own Exec and
+// Query do, so the runner's polling shows in `loom queries` and a slow
+// fetch as db.slow. The store needs database/sql's own types for its
+// row locks, leader lock and LISTEN, so it can't run through Querier.
+type recorder struct {
+	r  sqlRunner
+	db *data.DB
+}
+
+func (s *Store) on(r sqlRunner) recorder { return recorder{r, s.ldb} }
+
+func (c recorder) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	start := time.Now()
+	res, err := c.r.ExecContext(ctx, query, args...)
+	var n int64
+	if err == nil {
+		n, _ = res.RowsAffected()
+	}
+	c.db.Record(ctx, query, start, n, err)
+	return res, err
+}
+
+func (c recorder) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	start := time.Now()
+	rows, err := c.r.QueryContext(ctx, query, args...)
+	c.db.Record(ctx, query, start, 0, err)
+	return rows, err
+}
+
+func (c recorder) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	start := time.Now()
+	row := c.r.QueryRowContext(ctx, query, args...)
+	c.db.Record(ctx, query, start, 0, row.Err())
+	return row
+}
+
 // Clock returns the store's clock.
 func (s *Store) Clock() jobs.Clock { return s.clock }
 
@@ -208,7 +252,7 @@ func scanAll(rows *sql.Rows) ([]*jobs.Record, error) {
 // Fetch claims due jobs with FOR UPDATE SKIP LOCKED, so concurrent
 // fetches never block on or return the same job.
 func (s *Store) Fetch(ctx context.Context, r jobs.FetchRequest) ([]*jobs.Record, error) {
-	rows, err := s.db.QueryContext(ctx, fetchSQL, r.Queue, r.Limit, r.Now, r.Node, r.LeaseUntil)
+	rows, err := s.on(s.db).QueryContext(ctx, fetchSQL, r.Queue, r.Limit, r.Now, r.Node, r.LeaseUntil)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +298,7 @@ func (s *Store) Finish(ctx context.Context, id int64, f jobs.Finish) error {
 		return err
 	}
 	defer tx.Rollback()
-	res, err := tx.ExecContext(ctx, `
+	res, err := s.on(tx).ExecContext(ctx, `
 		UPDATE loom_jobs SET state = $4, lease_until = NULL, errors = errors || $5::jsonb, attempt = attempt - $6,
 			finished_at = COALESCE($7, finished_at), scheduled_at = COALESCE($8, scheduled_at)
 		WHERE id = $1 AND state = 'executing' AND attempted_by = $2 AND attempt = $3`,
@@ -266,21 +310,21 @@ func (s *Store) Finish(ctx context.Context, id int64, f jobs.Finish) error {
 		return jobs.ErrLeaseLost
 	}
 	if f.State == jobs.Available {
-		if err := notifyQueueOf(ctx, tx, id); err != nil {
+		if err := notifyQueueOf(ctx, s.on(tx), id); err != nil {
 			return err
 		}
 	}
 	return tx.Commit()
 }
 
-func notifyQueueOf(ctx context.Context, tx *sql.Tx, id int64) error {
+func notifyQueueOf(ctx context.Context, tx recorder, id int64) error {
 	_, err := tx.ExecContext(ctx, `SELECT pg_notify($1, queue) FROM loom_jobs WHERE id = $2`, channel, id)
 	return err
 }
 
 // ExtendLeases renews the leases of jobs executing on node.
 func (s *Store) ExtendLeases(ctx context.Context, node string, ids []int64, until time.Time) error {
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.on(s.db).ExecContext(ctx, `
 		UPDATE loom_jobs SET lease_until = $3
 		WHERE id = ANY($2) AND state = 'executing' AND attempted_by = $1`, node, ids, until)
 	return err
@@ -295,7 +339,7 @@ func (s *Store) Rescue(ctx context.Context, now time.Time) (int, error) {
 		return 0, err
 	}
 	defer tx.Rollback()
-	rows, err := tx.QueryContext(ctx, `
+	rows, err := s.on(tx).QueryContext(ctx, `
 		WITH due AS (
 			SELECT id, attempt >= max_attempts AS spent,
 				(SELECT count(*) FROM jsonb_array_elements(errors) e WHERE e->>'code' = $3) AS rescues
@@ -336,7 +380,7 @@ func (s *Store) Rescue(ctx context.Context, now time.Time) (int, error) {
 		return 0, err
 	}
 	for q := range queues {
-		if _, err := tx.ExecContext(ctx, `SELECT pg_notify($1, $2)`, channel, q); err != nil {
+		if _, err := s.on(tx).ExecContext(ctx, `SELECT pg_notify($1, $2)`, channel, q); err != nil {
 			return 0, err
 		}
 	}
@@ -355,7 +399,7 @@ const pruneBatch = 5000
 func (s *Store) Prune(ctx context.Context, before time.Time) (int, error) {
 	total := 0
 	for {
-		res, err := s.db.ExecContext(ctx, `
+		res, err := s.on(s.db).ExecContext(ctx, `
 			DELETE FROM loom_jobs WHERE id IN (
 				SELECT id FROM loom_jobs
 				WHERE state IN ('completed', 'discarded', 'cancelled') AND finished_at < $1
@@ -374,7 +418,7 @@ func (s *Store) Prune(ctx context.Context, before time.Time) (int, error) {
 
 // Get returns a job.
 func (s *Store) Get(ctx context.Context, id int64) (*jobs.Record, error) {
-	r, err := scan(s.db.QueryRowContext(ctx, `SELECT `+columns+` FROM loom_jobs WHERE id = $1`, id))
+	r, err := scan(s.on(s.db).QueryRowContext(ctx, `SELECT `+columns+` FROM loom_jobs WHERE id = $1`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, jobs.ErrNotFound
 	}
@@ -412,7 +456,7 @@ func (s *Store) List(ctx context.Context, f jobs.Filter) ([]*jobs.Record, error)
 	}
 	args = append(args, limit)
 	q += fmt.Sprintf(" ORDER BY id DESC LIMIT $%d", len(args))
-	rows, err := s.db.QueryContext(ctx, q, args...)
+	rows, err := s.on(s.db).QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -428,13 +472,13 @@ func (s *Store) change(ctx context.Context, id int64, notify bool, query string,
 		return err
 	}
 	defer tx.Rollback()
-	res, err := tx.ExecContext(ctx, query, append([]any{id}, args...)...)
+	res, err := s.on(tx).ExecContext(ctx, query, append([]any{id}, args...)...)
 	if err != nil {
 		return err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		var exists bool
-		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM loom_jobs WHERE id = $1)`, id).Scan(&exists); err != nil {
+		if err := s.on(tx).QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM loom_jobs WHERE id = $1)`, id).Scan(&exists); err != nil {
 			return err
 		}
 		if !exists {
@@ -443,7 +487,7 @@ func (s *Store) change(ctx context.Context, id int64, notify bool, query string,
 		return jobs.ErrState
 	}
 	if notify {
-		if err := notifyQueueOf(ctx, tx, id); err != nil {
+		if err := notifyQueueOf(ctx, s.on(tx), id); err != nil {
 			return err
 		}
 	}
@@ -471,7 +515,7 @@ func (s *Store) Delete(ctx context.Context, id int64) error {
 
 // Stats counts jobs by queue and state.
 func (s *Store) Stats(ctx context.Context) ([]jobs.QueueStats, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT queue, state, count(*) FROM loom_jobs GROUP BY queue, state ORDER BY queue`)
+	rows, err := s.on(s.db).QueryContext(ctx, `SELECT queue, state, count(*) FROM loom_jobs GROUP BY queue, state ORDER BY queue`)
 	if err != nil {
 		return nil, err
 	}
@@ -495,7 +539,7 @@ func (s *Store) Stats(ctx context.Context) ([]jobs.QueueStats, error) {
 	// The fetch index covers the waiting jobs, so this reads one row per queue.
 	for i := range out {
 		var at sql.NullTime
-		err := s.db.QueryRowContext(ctx, `SELECT min(scheduled_at) FROM loom_jobs WHERE queue = $1 AND state IN ('available', 'scheduled', 'retryable')`, out[i].Queue).Scan(&at)
+		err := s.on(s.db).QueryRowContext(ctx, `SELECT min(scheduled_at) FROM loom_jobs WHERE queue = $1 AND state IN ('available', 'scheduled', 'retryable')`, out[i].Queue).Scan(&at)
 		if err != nil {
 			return nil, err
 		}
@@ -524,7 +568,7 @@ func (s *Store) TryLead(ctx context.Context, node string, now, until time.Time) 
 		return false, err
 	}
 	var ok bool
-	if err := conn.QueryRowContext(ctx, `SELECT pg_try_advisory_lock($1)`, int64(leaderKey)).Scan(&ok); err != nil {
+	if err := s.on(conn).QueryRowContext(ctx, `SELECT pg_try_advisory_lock($1)`, int64(leaderKey)).Scan(&ok); err != nil {
 		conn.Close()
 		return false, err
 	}
@@ -543,7 +587,7 @@ func (s *Store) Resign(ctx context.Context, node string) error {
 	if s.leaderConn == nil {
 		return nil
 	}
-	_, err := s.leaderConn.ExecContext(ctx, `SELECT pg_advisory_unlock($1)`, int64(leaderKey))
+	_, err := s.on(s.leaderConn).ExecContext(ctx, `SELECT pg_advisory_unlock($1)`, int64(leaderKey))
 	s.leaderConn.Close()
 	s.leaderConn = nil
 	return err
@@ -559,7 +603,7 @@ func (s *Store) Heartbeat(ctx context.Context, n jobs.Node) error {
 	if err != nil {
 		return err
 	}
-	_, err = s.db.ExecContext(ctx, `
+	_, err = s.on(s.db).ExecContext(ctx, `
 		INSERT INTO loom_nodes (name, queues, leader, started_at, seen_at, lease_until)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (name) DO UPDATE SET queues = $2, leader = $3, started_at = $4, seen_at = $5, lease_until = $6`,
@@ -569,7 +613,7 @@ func (s *Store) Heartbeat(ctx context.Context, n jobs.Node) error {
 
 // Nodes returns loom_nodes, by name.
 func (s *Store) Nodes(ctx context.Context) ([]jobs.Node, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT name, queues, leader, started_at, seen_at, lease_until FROM loom_nodes ORDER BY name`)
+	rows, err := s.on(s.db).QueryContext(ctx, `SELECT name, queues, leader, started_at, seen_at, lease_until FROM loom_nodes ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -592,13 +636,13 @@ func (s *Store) Nodes(ctx context.Context) ([]jobs.Node, error) {
 
 // RemoveNode deletes a node's entry.
 func (s *Store) RemoveNode(ctx context.Context, name string) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM loom_nodes WHERE name = $1`, name)
+	_, err := s.on(s.db).ExecContext(ctx, `DELETE FROM loom_nodes WHERE name = $1`, name)
 	return err
 }
 
 // PruneNodes deletes entries whose lease ended before before.
 func (s *Store) PruneNodes(ctx context.Context, before time.Time) (int, error) {
-	res, err := s.db.ExecContext(ctx, `DELETE FROM loom_nodes WHERE lease_until < $1`, before)
+	res, err := s.on(s.db).ExecContext(ctx, `DELETE FROM loom_nodes WHERE lease_until < $1`, before)
 	if err != nil {
 		return 0, err
 	}

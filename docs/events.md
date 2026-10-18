@@ -18,7 +18,8 @@ Every event goes to the app's stream (`app.Stream()`), which:
 
 - keeps the last 2000 for `loom events`, `loom trace` and the `events`
   and `trace` MCP tools (dev only, at `GET /_loom/dev/events`);
-- counts them by name, with mean and max `ms`, for `loom stats`;
+- counts them by name, and by route, job type or table, with the count
+  in the last minute and the mean, p95 and max `ms`, for `loom stats`;
 - logs them to `Config.Logger` at the level shown below. The default
   logger is Info, so the per-click and per-query Debug events stay out
   of production logs; set a Debug handler to see them;
@@ -199,6 +200,8 @@ panic or "commit failed").
 ### db.slow
 Warn. A statement ran for `Config.SlowQuery` (default 500ms) or longer:
 `ms`, `query` (on one line, cut at 200 bytes; never its arguments).
+Every statement, slow or not, is also counted for `loom queries`
+(`data.md`).
 
 ### job.enqueue
 Debug. `jobs.Enqueue` inserted a job: `id`, `type`, `queue`,

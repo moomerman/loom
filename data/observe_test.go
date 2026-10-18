@@ -69,3 +69,51 @@ func TestHookPanic(t *testing.T) {
 		t.Fatalf("events: %+v", evs)
 	}
 }
+
+func TestQueryStats(t *testing.T) {
+	db := dbs(t)["postgres"]
+	if db == nil {
+		t.Skip("needs LOOM_TEST_DATABASE_URL")
+	}
+	ctx := context.Background()
+	for range 3 {
+		var n int
+		if err := db.QueryRow(ctx, "SELECT 1").Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	err := db.Tx(ctx, func(tx data.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT g
+			FROM generate_series(1, 4) g`)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+		}
+		return rows.Close()
+	})
+	db.Exec(ctx, "SELECT nope")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]data.QueryStat{}
+	for _, s := range db.QueryStats() {
+		got[s.Query] = s
+	}
+	if s := got["SELECT 1"]; s.Count != 3 || s.Rows != 3 || s.Timed != 3 || s.LastMinute != 3 {
+		t.Errorf("SELECT 1: %+v", s)
+	}
+	if s := got["SELECT g FROM generate_series(1, 4) g"]; s.Count != 1 || s.Rows != 4 {
+		t.Errorf("series: %+v", s)
+	}
+	if s := got["SELECT nope"]; s.Count != 1 || s.Errors != 1 {
+		t.Errorf("failed statement: %+v", s)
+	}
+	start := time.Now()
+	db.Record(ctx, "SELECT from_a_store", start, 7, nil)
+	for _, s := range db.QueryStats() {
+		if s.Query == "SELECT from_a_store" && (s.Count != 1 || s.Rows != 7) {
+			t.Errorf("recorded: %+v", s)
+		}
+	}
+}
