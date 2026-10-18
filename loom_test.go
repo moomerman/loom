@@ -344,7 +344,7 @@ func TestViewErrors(t *testing.T) {
 	if e, ok := err.(*Error); !ok || e.Code != RT402 || !strings.Contains(e.Where, "loom_test.go") {
 		t.Errorf("got %#v", err)
 	}
-	if _, err := newView(&route{prototype: counterValue{}, tmpl: hxtest.Badge, group: app.top}, nil, "", true, nil); err == nil || err.(*Error).Code != RT406 {
+	if _, err := newView(&route{prototype: counterValue{}, tmpl: hxtest.Badge, group: app.top}, nil, "", true, nil, "", ""); err == nil || err.(*Error).Code != RT406 {
 		t.Errorf("got %v", err)
 	}
 	if _, err := app.NewView(httptest.NewRequest("GET", "/nope", nil), "sid", true); err == nil || err.(*Error).Code != RT414 {

@@ -101,6 +101,10 @@ lists these.
 Debug. A page load: `sid`, `route`, `ms`, `outcome` (ok, redirect,
 denied, limited, full or failed), and `queries` and `query_ms`: the
 database statements the mount ran under `c.Context()`, and their time.
+On a remount that brought kept state back (`Keep`, `live.md`), `kept`
+says what became of it ("restored the layout's; restored the page's",
+"dropped: another browser's", "dropped the page's: it no longer fits
+*app.Wizard", ...).
 
 ### page.event
 Debug. A browser event handled: `sid`, `route`, `event`, `ms`, `diff`

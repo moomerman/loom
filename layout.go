@@ -308,6 +308,7 @@ func newLiveLayout(tmpl render.Template, state Page) *layout {
 		e.Fix = "pass a pointer, e.g. loom.LiveLayout(templates.Shell, &Shell{})"
 		panic(&e)
 	}
+	checkKeeper(state, callerOutsideLoom())
 	name, want := qualified(tmpl), tmpl.AssignsType()
 	m, ok := reflect.TypeOf(state).MethodByName("Assigns")
 	if !ok || m.Type.NumIn() != 2 || m.Type.In(1) != ctxType || m.Type.NumOut() != 1 || m.Type.Out(0) != want {

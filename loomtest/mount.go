@@ -123,7 +123,11 @@ func newPage(t testing.TB, app *loom.App, v *loom.View, err error, start time.Ti
 	if err != nil {
 		t.Fatalf("%s: %v", what, err)
 	}
-	app.Emit(context.Background(), trace.PageMount, append([]any{"sid", "test", "route", v.Route(), "ms", time.Since(start), "outcome", "ok", "trace", v.Trace()}, v.Tally().Attrs()...)...)
+	attrs := append([]any{"sid", "test", "route", v.Route(), "ms", time.Since(start), "outcome", "ok", "trace", v.Trace()}, v.Tally().Attrs()...)
+	if k := v.Restored(); k != "" {
+		attrs = append(attrs, "kept", k)
+	}
+	app.Emit(context.Background(), trace.PageMount, attrs...)
 	v.Tally().Reset()
 	v.NewTopics() // Listen subscribes to every topic
 	p := &Page{t: t, app: app, view: v, tree: roundTrip(t, v.Tree()), nav: v.Navigation(), now: now, ps: ps, opts: o}
@@ -434,6 +438,23 @@ func (p *Page) Navigate(path string) *Page {
 	start := time.Now()
 	v, err := p.app.NewViewFrom(p.view, p.opts.request(path), "test", !p.opts.noLayout)
 	return newPage(p.t, p.app, v, err, start, "navigating to "+path, p.now, p.ps, p.opts)
+}
+
+// Remount mounts the page again as the browser does after a server
+// restart, and returns the new page: a fresh copy of the page and its
+// live layout at the page's URL, given what they keep (loom.Keeper)
+// before Mount, so a test shows what a deploy keeps and what it loses.
+// The old page does nothing more. It fails the test like Mount.
+//
+//	p := loomtest.Mount(t, app, "/")
+//	p.Click("button.next")
+//	p = p.Remount()
+//	p.AssertText("#now-title", "Monty on the Run") // still playing
+func (p *Page) Remount() *Page {
+	p.t.Helper()
+	start := time.Now()
+	v, err := p.app.RemountView(p.view, p.opts.request(p.view.URL()), "test", !p.opts.noLayout)
+	return newPage(p.t, p.app, v, err, start, "remounting "+p.view.URL(), p.now, p.ps, p.opts)
 }
 
 // Title returns the page's title, as set with loom.Ctx.Title.

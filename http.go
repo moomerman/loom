@@ -27,7 +27,12 @@ func (a *App) servePage(w http.ResponseWriter, r *http.Request, rt *route) {
 			from.call(func() { carry = from.view.lend(rt) })
 		}
 	}
-	_, doc, err := a.startSession(rt, r, browserID(w, r), carry)
+	// A remount brings back the state the page kept (keep.go).
+	kept := ""
+	if r.Header.Get(navigateHeader) == "-" {
+		kept = r.Header.Get(keepHeader)
+	}
+	_, doc, err := a.startSession(rt, r, browserID(w, r), carry, kept)
 	if err != nil && carry != nil {
 		from.call(func() { from.view.giveBack() })
 	}

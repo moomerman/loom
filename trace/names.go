@@ -13,7 +13,7 @@ const (
 	Error           = "error"             // a runtime error: msg, code, where, fix, sid, source
 
 	// Live pages, one per session goroutine's turn.
-	PageMount   = "page.mount"   // a page load: sid, route, ms, user, outcome
+	PageMount   = "page.mount"   // a page load: sid, route, ms, user, outcome, kept (on a remount)
 	PageEvent   = "page.event"   // a browser event handled: sid, route, event, ms, diff, bytes, outcome
 	PageInfo    = "page.info"    // a PubSub message handled: sid, route, topic, event, ms, diff, bytes, outcome
 	PageWatch   = "page.watch"   // a watched table re-rendered: sid, route, ms, diff, bytes, outcome

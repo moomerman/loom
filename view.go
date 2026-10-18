@@ -56,6 +56,11 @@ type View struct {
 	bound     map[string]bool  // events the tree binds with on:*, for RT438
 
 	lent bool // its live layout went to the next page (lend); it does nothing more
+
+	browser   string // the browser cookie's hash, which kept state is sealed for
+	kept      string // the kept state, sealed, as the browser holds it (keep.go)
+	keptPlain []byte // what kept seals, to reseal only on a change
+	restored  string // what the mount did with the kept state it was given (restore)
 }
 
 // NewView mounts and renders the live page routed at r's path, as a GET
@@ -72,7 +77,7 @@ func (a *App) NewView(r *http.Request, sid string, layouts bool) (*View, error) 
 		return nil, &Error{Code: RT414, Msg: fmt.Sprintf("no live route matches %s %s", r.Method, r.URL.Path), Fix: "use one of the app's live paths: " + strings.Join(paths, ", ")}
 	}
 	setPathValues(r, rt.path)
-	return newView(rt, r, sid, layouts, nil)
+	return newView(rt, r, sid, layouts, nil, "", "")
 }
 
 // NewViewFrom mounts and renders the live page routed at r's path as a
@@ -88,12 +93,32 @@ func (a *App) NewViewFrom(from *View, r *http.Request, sid string, layouts bool)
 	}
 	setPathValues(r, rt.path)
 	carry := from.lend(rt)
-	v, err := newView(rt, r, sid, layouts, carry)
+	v, err := newView(rt, r, sid, layouts, carry, from.browser, "")
 	if err != nil {
 		from.giveBack()
 	}
 	return v, err
 }
+
+// RemountView mounts the page routed at r's path again, as a remount
+// after a restart would: a fresh copy of the page and its live layout,
+// given the state from kept (Keep) before Mount. from does nothing
+// more. loomtest's Remount uses it.
+func (a *App) RemountView(from *View, r *http.Request, sid string, layouts bool) (*View, error) {
+	_, pattern := a.mux.Handler(r)
+	rt := a.routesByPattern[pattern]
+	if rt == nil {
+		return a.NewView(r, sid, layouts) // RT414
+	}
+	setPathValues(r, rt.path)
+	from.lent = true
+	return newView(rt, r, sid, layouts, nil, from.browser, from.kept)
+}
+
+// Restored says what the page's mount did with the state a remount
+// brought it (Keep): "restored the layout's", "dropped: another
+// browser's" and so on, or "" if it brought none.
+func (v *View) Restored() string { return v.restored }
 
 // carried is a live layout's state on its way from one page to the next
 // in a live navigation: its state and the topics it subscribed to.
@@ -159,8 +184,9 @@ func pathValues(route, path string) [][2]string {
 
 // newView copies the route's prototype page, mounts it and renders it.
 // With carry, a live navigation brought the live layout's state from the
-// previous page, already mounted.
-func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carried) (*View, error) {
+// previous page, already mounted. browser is the browser cookie's hash,
+// and kept the state a remount brought back, sealed (keep.go).
+func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carried, browser, kept string) (*View, error) {
 	clone, err := clonePage(rt.prototype)
 	if err != nil {
 		return nil, err
@@ -168,7 +194,7 @@ func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carrie
 	page := bindPage(clone)
 	scope := rt.styledScope()
 	ctx, cancel := context.WithCancel(context.WithoutCancel(r.Context()))
-	v := &View{page: page, route: rt, tmpl: rt.tmpl, auth: rt.auth, watch: rt.watch, scope: scope, cancel: cancel, ctx: &Ctx{SID: sid, Request: r, app: rt.group.app, scope: scope}}
+	v := &View{page: page, route: rt, tmpl: rt.tmpl, auth: rt.auth, watch: rt.watch, scope: scope, cancel: cancel, ctx: &Ctx{SID: sid, Request: r, app: rt.group.app, scope: scope}, browser: browser}
 	v.base = trace.WithTally(ctx, &v.tally)
 	v.begin(trace.ID(r.Context())) // the page load's trace, if the runtime gave one
 	if l := rt.group.appLayout(); l != nil && l.live != nil && carry != nil {
@@ -216,6 +242,8 @@ func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carrie
 		cancel()
 		return nil, err
 	}
+	// What a remount brought back goes in before Mount, so Mount sees it.
+	v.restored = v.restore(kept, carry != nil)
 	// The layout mounts first, so the page's Mount can read it (LayoutOf).
 	if v.live != nil && carry == nil {
 		if err := v.run(v.live, "Mount", func() { v.live.page.Mount(v.ctx) }); err != nil {
@@ -245,6 +273,7 @@ func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carrie
 	}
 	v.tree, v.assigns, v.lassign, v.version, v.title = tree, assigns, lassign, 1, v.ctx.title
 	v.ctx.changed, v.ctx.loaded = false, true
+	v.keep()
 	return v, nil
 }
 
@@ -428,6 +457,7 @@ func (v *View) update(assigns, lassign Assigns, what string, err error) (map[str
 		return nil, err // keys were checked by render; this would be a Loom bug
 	}
 	v.tree, v.assigns, v.lassign = tree, assigns, lassign
+	v.keep()
 	if d != nil || v.ctx.title != v.title {
 		v.version++
 		v.title = v.ctx.title
@@ -523,7 +553,8 @@ func (v *View) Document() (string, error) {
 		root = fingerprint(doc.Statics) + "." + fingerprint(&render.Statics{Parts: []string{js, nav}})
 	}
 	// encoding/json escapes <, > and &, so the tree is safe inside <script>.
-	treeJSON, err := json.Marshal(map[string]any{"v": v.version, "tree": diff.Full(v.tree), "root": root, "p": protocol})
+	// "kept" is always there, so a live navigation drops the last page's.
+	treeJSON, err := json.Marshal(map[string]any{"v": v.version, "tree": diff.Full(v.tree), "root": root, "p": protocol, "kept": v.kept})
 	if err != nil {
 		return "", err
 	}

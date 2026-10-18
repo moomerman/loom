@@ -52,11 +52,13 @@ mounts
   "rate limit: 5 per minute by email on sign_in"), the events its markup sends by name
   with the DOM event and `val-*` names (including events of the
   components it calls) and the Go value that handles them, and the
-  tables it watches (`loom.Watch`), and whether the page keeps state in
-  its URL (`HandleParams`, see `live.md`). An event a caller chooses through
+  tables it watches (`loom.Watch`), whether the page keeps state in
+  its URL (`HandleParams`, see `live.md`), and what it keeps across a
+  restart (`Keep`). An event a caller chooses through
   an event parameter is listed under the caller.
 - **layouts**: the events an app layout sends, and what handles them:
-  every page in it, or a live layout's own `Events` (`layouts.md`). A
+  every page in it, or a live layout's own `Events` (`layouts.md`), and
+  what a live layout keeps across a restart (`Keep`). A
   page's event that its live layout handles says so.
 - **handlers**: plain HTTP handlers (`Group.Handle`), their auth and
   rate limits.

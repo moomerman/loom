@@ -356,7 +356,7 @@ What the app does, for review: the text of `loom.manifest`, or with
   "routes": [{"path": "/todos/{id}", "page": "*todo.TodoDetailPage", "component": "templates.TodoDetail",
     "layout": "templates.App", "auth": [], "rate_limit": [], "handler": "(*todo.TodoDetailPage).Events",
     "events": [{"name": "toggle_todo", "on": ["click"], "vals": ["id"], "at": ["todo_app.hx:66:90"]}],
-    "watch": ["todos"], "params": "", "dev_only": false}],
+    "watch": ["todos"], "params": "", "keeps": [], "dev_only": false}],
   "layouts": [], "handlers": [],
   "mounts": [{"prefix": "/admin/jobs", "type": "*jobsweb.App", "auth": ["todo.requireAdmin"], "routes": ["/", "/jobs", "/jobs/{id}", "/cron"], "rate_limits": [], "dev_only": false}],
   "jobs": {"mode": "run", "types": [{"type": "todo.PruneCompleted", "queue": "default", "max_attempts": 20, "timeout": "1m0s", "args": []}],
@@ -371,7 +371,9 @@ What the app does, for review: the text of `loom.manifest`, or with
 their template positions; an app layout's are under `layouts`, with a
 `handler` for a live layout. An event of the page's markup that its
 live layout handles has a `handler` of its own. `watch`
-names the tables whose changes re-render the page. `rate_limit` (a
+names the tables whose changes re-render the page, and `keeps` the
+fields the page keeps across a remount (`Keep`; a live layout's are
+its `keeps` under `layouts`). `rate_limit` (a
 route's or handler's) and `rate_limits` (a mount's: `"every route: "`
 and a limit on all its routes, else the route and the limit) describe
 the `loom.RateLimit`s. `dev_only` is true

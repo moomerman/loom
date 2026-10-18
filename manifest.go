@@ -64,6 +64,7 @@ type ManifestRoute struct {
 	Handler   string          `json:"handler"`    // what handles them
 	Watch     []string        `json:"watch"`      // tables whose changes re-render the page
 	Params    string          `json:"params"`     // what reads the URL's state (HandleParams); "" for none
+	Keeps     []string        `json:"keeps"`      // the fields the page keeps across a remount (Keep)
 	DevOnly   bool            `json:"dev_only"`   // served only in dev (loom.DevOnly)
 }
 
@@ -74,6 +75,7 @@ type ManifestLayout struct {
 	Component string          `json:"component"`
 	Handler   string          `json:"handler,omitempty"`
 	Events    []ManifestEvent `json:"events"`
+	Keeps     []string        `json:"keeps,omitempty"` // the fields a live layout keeps across a remount (Keep)
 }
 
 // ManifestEvent is a server event a page sends, with every place that
@@ -166,6 +168,7 @@ func (a *App) Manifest() *Manifest {
 			ml := ManifestLayout{Component: r.Layout, Events: manifestEvents(lay.tmpl.ComponentEvents())}
 			if lay.live != nil {
 				ml.Handler = fmt.Sprintf("(%T).Events", lay.live)
+				ml.Keeps = keeps(lay.live)
 				evs := eventsOf(lay.live)
 				for i, e := range r.Events {
 					if evs[e.Name] != nil {
@@ -173,12 +176,13 @@ func (a *App) Manifest() *Manifest {
 					}
 				}
 			}
-			if !layouts[r.Layout] && len(ml.Events) > 0 {
+			if !layouts[r.Layout] && (len(ml.Events) > 0 || len(ml.Keeps) > 0) {
 				layouts[r.Layout] = true
 				m.Layouts = append(m.Layouts, ml)
 			}
 		}
 		r.Page = fmt.Sprintf("%T", rt.prototype)
+		r.Keeps = append([]string{}, keeps(rt.prototype)...)
 		r.Handler = "(" + r.Page + ").Events"
 		if _, ok := rt.prototype.(ParamsHandler); ok {
 			r.Params = "(" + r.Page + ").HandleParams"
@@ -424,6 +428,9 @@ func (m *Manifest) Text() string {
 		if r.Params != "" {
 			line(2, "state in the URL, read by %s; links within the route patch it", r.Params)
 		}
+		if len(r.Keeps) > 0 {
+			line(2, "keeps across a restart: %s", strings.Join(r.Keeps, ", "))
+		}
 	}
 	if len(m.Layouts) > 0 {
 		line(0, "")
@@ -431,12 +438,17 @@ func (m *Manifest) Text() string {
 		line(0, "")
 		for _, l := range m.Layouts {
 			line(1, "%s", l.Component)
-			if l.Handler != "" {
+			if len(l.Events) == 0 {
+				line(2, "events: none")
+			} else if l.Handler != "" {
 				line(2, "events, handled by %s:", l.Handler)
 			} else {
 				line(2, "events, handled by each page in it:")
 			}
 			events(3, l.Events)
+			if len(l.Keeps) > 0 {
+				line(2, "keeps across a restart: %s", strings.Join(l.Keeps, ", "))
+			}
 		}
 	}
 	if len(m.Handlers) > 0 {

@@ -78,7 +78,11 @@ func (a *App) cipher(purpose string) (cipher.AEAD, error) {
 	if a.cfg.Secret == "" {
 		return nil, ErrNoSecret
 	}
-	mac := hmac.New(sha256.New, []byte(a.cfg.Secret))
+	return cipherFor(a.cfg.Secret, purpose)
+}
+
+func cipherFor(secret, purpose string) (cipher.AEAD, error) {
+	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte("loom.seal:" + purpose))
 	block, err := aes.NewCipher(mac.Sum(nil))
 	if err != nil {

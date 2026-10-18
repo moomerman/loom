@@ -324,6 +324,8 @@ type App struct {
 	errors     recentErrors
 	devOnce    sync.Once
 	devHandler *http.ServeMux
+	keepOnce   sync.Once
+	keepKey    string // seals kept state in tests, with no secret (keep.go)
 	mux        *http.ServeMux
 	mu         sync.Mutex
 	sessions   map[string]*session
@@ -531,6 +533,9 @@ func (a *App) run(ctx context.Context, addr string, ready chan<- string) error {
 		addr = dev
 	}
 	if err := a.checkDev(addr); err != nil {
+		return err
+	}
+	if err := a.checkKeep(); err != nil {
 		return err
 	}
 	if err := a.checkDB(context.Background()); err != nil {

@@ -43,6 +43,7 @@ type session struct {
 	mu        sync.Mutex // guards the fields below
 	tree      *render.Rendered
 	title     string                  // the page title as of version
+	kept      string                  // the kept state as of version, sealed (keep.go)
 	version   int                     // increases with every update sent
 	subs      map[chan message]uint64 // open streams, numbered in the order they opened
 	nextSub   uint64
@@ -88,9 +89,11 @@ func newSID() string {
 
 // startSession mounts a page and starts its goroutine. It returns the
 // page's first render as a whole HTML document.
-func (a *App) startSession(rt *route, r *http.Request, browser string, carry *carried) (s *session, doc string, err error) {
+// kept is the state a remount brought back, sealed (keep.go).
+func (a *App) startSession(rt *route, r *http.Request, browser string, carry *carried, kept string) (s *session, doc string, err error) {
 	start := time.Now()
 	r = r.WithContext(trace.WithTrace(r.Context(), trace.NewID()))
+	restored := ""
 	defer func() {
 		sid, attrs := "", []any(nil)
 		if s != nil {
@@ -98,6 +101,9 @@ func (a *App) startSession(rt *route, r *http.Request, browser string, carry *ca
 			if s.view != nil {
 				attrs = s.view.Tally().Attrs()
 			}
+		}
+		if restored != "" {
+			attrs = append(attrs, "kept", restored)
 		}
 		a.stream.Emit(r.Context(), trace.PageMount, append([]any{"sid", sid, "route", rt.path, "ms", time.Since(start), "outcome", outcome(err)}, attrs...)...)
 	}()
@@ -118,7 +124,10 @@ func (a *App) startSession(rt *route, r *http.Request, browser string, carry *ca
 		idleSince: time.Now(),
 		url:       r.URL.RequestURI(),
 	}
-	v, err := newView(rt, r, s.id, true, carry)
+	v, err := newView(rt, r, s.id, true, carry, browser, kept)
+	if v != nil {
+		restored = v.Restored()
+	}
 	if err != nil {
 		if !errors.As(err, new(*authError)) && !errors.As(err, new(*LimitError)) && !errors.Is(err, ErrPageNotFound) {
 			a.reportError(r.Context(), s.id, err, "route", rt.path)
@@ -138,7 +147,7 @@ func (a *App) startSession(rt *route, r *http.Request, browser string, carry *ca
 	for _, f := range v.Failures() {
 		s.logError(f)
 	}
-	s.tree, s.title, s.version = v.tree, v.Title(), 1
+	s.tree, s.title, s.version, s.kept = v.tree, v.Title(), 1, v.Kept()
 	s.handlesParams = v.HandlesParams()
 	s.pathValues = pathValues(rt.path, r.URL.Path)
 	s.subscribeTopics()
@@ -297,7 +306,7 @@ func (s *session) handle(ev pageEvent) {
 	s.url = s.req.URL.RequestURI()
 	s.mu.Unlock()
 	s.subscribeTopics()
-	if d != nil || s.view.Title() != s.title {
+	if d != nil || s.view.Title() != s.title || s.view.Kept() != s.kept {
 		sent = s.publish("diff", "diff", d, s.view.tree)
 	}
 	if url, replace := s.view.Patched(); url != "" {
@@ -401,7 +410,14 @@ func (s *session) restart() bool {
 	s.app.stream.Emit(ctx, trace.PageRestart, "msg", "loom: the page failed, so it was mounted afresh", "sid", s.id, "route", s.route.path, "restarts", len(s.restarts))
 	s.unsubscribeTopics()
 	s.view.Close()
-	v, err := newView(s.route, s.req.WithContext(trace.WithTrace(s.req.Context(), trace.ID(ctx))), s.id, true, nil)
+	// The first restart in a while keeps what the page keeps (Keep), as
+	// of its last render; a page that fails again starts afresh, in case
+	// that state is why.
+	kept := ""
+	if len(s.restarts) == 1 {
+		kept = s.view.Kept()
+	}
+	v, err := newView(s.route, s.req.WithContext(trace.WithTrace(s.req.Context(), trace.ID(ctx))), s.id, true, nil, s.browser, kept)
 	if err != nil {
 		if !errors.As(err, new(*authError)) {
 			s.app.reportError(ctx, s.id, err, "route", s.route.path)
@@ -456,6 +472,10 @@ func (s *session) publish(event, field string, payload map[string]any, tree *ren
 	if title != s.title || event == "full" {
 		m["title"] = title
 	}
+	if kept := s.view.Kept(); kept != s.kept || event == "full" {
+		m["kept"] = kept
+		s.kept = kept
+	}
 	s.tree, s.title = tree, title
 	data, err := diff.Marshal(m)
 	if err != nil {
@@ -499,7 +519,7 @@ func (s *session) subscribe(v int) chan message {
 		close(oldest)
 	}
 	if v != s.version {
-		data, err := diff.Marshal(map[string]any{"v": s.version, "tree": diff.Full(s.tree), "title": s.title})
+		data, err := diff.Marshal(map[string]any{"v": s.version, "tree": diff.Full(s.tree), "title": s.title, "kept": s.kept})
 		if err == nil {
 			ch <- message{event: "full", data: data}
 		}

@@ -49,14 +49,16 @@
   document.addEventListener("loom:patch", function () { here = location.pathname + location.search; });
 
   // loomRemount swaps in a new session for this page when the server has
-  // lost its own (a restart), keeping what the user typed. A page whose root layout changed reloads.
+  // lost its own (a restart), keeping what the user typed and sending
+  // back the state the page keeps (Keep). A page whose root layout changed reloads.
   root.loomRemount = function () { go(location.href, false, true); };
 
   // go navigates to url, pushing it to the history if push is true.
   function go(url, push, remount) {
-    var n = ++nav, sid = root.getAttribute("data-sid");
+    var n = ++nav, sid = root.getAttribute("data-sid"), h = { "X-Loom-Navigate": remount ? "-" : sid };
+    if (remount) h["X-Loom-Kept"] = ("loomKept" in root ? root.loomKept : JSON.parse(document.getElementById("loom-tree").textContent).kept) || "";
     root.loomLeave(); // the server ends the session when it swaps
-    fetch(url, { headers: { "X-Loom-Navigate": remount ? "-" : sid } }).then(function (r) {
+    fetch(url, { headers: h }).then(function (r) {
       if (!remount && r.headers.get("X-Loom-Navigate") === "patch") return r.json().then(function (a) {
         if (n !== nav) return;
         root.loomStay();

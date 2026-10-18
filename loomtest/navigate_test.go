@@ -75,3 +75,40 @@ func TestNavigate(t *testing.T) {
 	item.Click("button.bump")
 	item.AssertText("button.bump", "3")
 }
+
+// keptChrome is a live layout whose count survives a remount.
+type keptChrome struct {
+	kept  struct{ Count int }
+	toast string
+}
+
+func (l *keptChrome) Keep() any { return &l.kept }
+
+func (l *keptChrome) Mount(c *loom.Ctx) { l.toast = "hi" }
+
+func (l *keptChrome) Assigns(c *loom.Ctx) hxtest.ChromeAssigns {
+	return hxtest.ChromeAssigns{Count: l.kept.Count, Toast: l.toast}
+}
+
+func (l *keptChrome) Events() loom.Events {
+	return loom.Events{"bump": func(c *loom.Ctx, _ loom.Payload) { l.kept.Count++ }, "dismiss": func(c *loom.Ctx, _ loom.Payload) { l.toast = "" }}
+}
+
+func TestRemount(t *testing.T) {
+	app := loom.New()
+	app.Group(loom.LiveLayout(hxtest.Chrome, &keptChrome{})).Live("/", &navPage{}, hxtest.Counter)
+	p := loomtest.Mount(t, app, "/")
+	p.Click("button.bump")
+	p.Click("span.toast")
+	p = p.Remount()
+	p.AssertText("button.bump", "1") // kept
+	p.AssertText("span.toast", "hi") // not kept: Mount set it again
+	p.AssertEvent("page.mount", "kept", "restored the layout's")
+
+	// Without Keep, a remount starts afresh.
+	app = loom.New()
+	app.Group(loom.LiveLayout(hxtest.Chrome, &chrome{})).Live("/", &navPage{}, hxtest.Counter)
+	p = loomtest.Mount(t, app, "/")
+	p.Click("button.bump")
+	p.Remount().AssertText("button.bump", "0")
+}

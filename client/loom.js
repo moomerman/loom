@@ -285,12 +285,17 @@
     });
   }
 
-  // title sets the document title from the page's title, framed as the
-  // root layout's <.live_title> says (its data-* attributes).
-  function title(t) {
-    if (typeof t !== "string") return;
+  // extras takes what a full tree or update carries besides the tree:
+  // the state the page keeps across a remount (Keep), sealed by the
+  // server, which navigate.js sends back when it remounts (root.loomKept;
+  // until an update brings one, the page's loom-tree has it); and the
+  // page's title, framed as the root layout's <.live_title> says (its
+  // data-* attributes).
+  function extras(m) {
+    if ("kept" in m) root.loomKept = m.kept;
+    if (typeof m.title !== "string") return;
     var d = (document.querySelector("title") || {}).dataset || {};
-    document.title = (d.prefix || "") + (t || d.default || "") + (d.suffix || "");
+    document.title = (d.prefix || "") + (m.title || d.default || "") + (d.suffix || "");
   }
 
   // --- Stream ---
@@ -301,7 +306,7 @@
     // Acked events are in this tree, whatever their version.
     pend.forEach(function (h) { if (h.v) h.v = 0; });
     update();
-    title(m.title);
+    extras(m);
   }
 
   function connect() {
@@ -315,7 +320,7 @@
         tree = apply(tree, m.diff);
         update();
       } else settle();
-      title(m.title);
+      extras(m);
     });
     stream.addEventListener("reload", function () {
       stream.close();
@@ -374,7 +379,7 @@
     document.dispatchEvent(new Event("loom:patch"));
   };
   // The server lost this page's session (it restarted): take over a new
-  // one, keeping the document and form input (navigate.js).
+  // one, keeping the document, form input and kept state (navigate.js).
   function remount() {
     root.loomRemount ? root.loomRemount() : location.reload();
   }

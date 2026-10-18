@@ -203,11 +203,66 @@ shutdown (`SIGINT`, `SIGTERM`) the app stops taking events (browsers
 resend them after the restart) and finishes the ones already queued,
 within the jobs runner's `ShutdownGrace` (15s by default). When the
 page's session is gone, the page remounts on a new one without a reload,
-keeping what the user typed in its forms (`layouts.md`). So deploying
-mid-click or mid-form loses nothing. The limit: a handler's writes and the record
+keeping what the user typed in its forms (`layouts.md`) and what the
+page keeps (`Keep`, below). So deploying mid-click or mid-form loses
+nothing. The limit: a handler's writes and the record
 that the event ran commit separately, so a crash between the two runs
 the event again on resend. Make handlers that write idempotent where
 that matters, as jobs are. The wire format is in `wire.md`.
+
+### Keeping state across a remount
+
+A remount mounts a fresh copy of the page and its live layout: what
+they held in memory, and only that, is gone. Form input comes back (the
+browser restores it, `layouts.md`); anything else a restart mustn't
+lose, the page names with a `Keep` method returning a pointer to it:
+
+```go
+type Player struct {
+	store   *Store
+	playing Playing         // what a restart mustn't lose
+	tracks  map[int]Track   // loaded from playing's ids
+}
+
+// Playing is kept across a remount: plain data, so ids, not records.
+type Playing struct {
+	Station string
+	History []int // track ids, oldest first
+	At      int
+}
+
+func (p *Player) Keep() any { return &p.playing }
+
+func (p *Player) Mount(c *loom.Ctx) {
+	if p.playing.Station == "" { // nothing kept: a page load
+		p.playing.Station = "mix"
+	}
+	p.tracks = p.store.Tracks(c.Context(), p.playing.History)
+}
+```
+
+- After each render that changes it, the runtime encodes the kept state
+  as JSON, seals it with `Config.Secret` and sends it to the browser,
+  which holds it. A remount sends it back, and it is decoded into the
+  fresh copy **before Mount**, so Mount sees it and loads what it names.
+  Mount still runs: don't overwrite what was kept, and keep nothing
+  Mount derives from the request (who the user is).
+- It works for a page and for a live layout (`layouts.md`), each its
+  own. It comes back after a restart or deploy (a remount), and after
+  the page's first restart from a panic; a page load or reload starts
+  afresh, as the user expects.
+- Sealed means it comes back exactly as the server rendered it, for the
+  browser it was given to, or not at all: the browser can't read, change
+  or swap it. A deploy that changed the kept type so the old state no
+  longer decodes drops it, and the page mounts afresh. `page.mount`'s
+  `kept` says what happened (`events.md`).
+- Kept state is exported fields of plain data that `encoding/json`
+  encodes, else RT452 at startup. It travels back in a request header,
+  so it is capped at `loom.MaxKept` (6 KB sealed, compressed); over that
+  is RT454 and nothing is kept. Keep ids and choices, not records.
+- `Run` refuses to start without `Config.Secret` outside dev (RT453).
+- `loom.manifest` lists what each page and live layout keeps. In tests,
+  `p.Remount()` remounts the page as a restart does (Testing below).
 
 ## Timers
 
@@ -444,7 +499,10 @@ func TestTodoPage(t *testing.T) {
   `c.Navigate` (see `layouts.md`), or `""`. `p.URL()`, `p.Patch(url)` and
   `p.Follow(selector)` test a page's URL state (above). `p.Navigate(path)`
   returns the page a live navigation to path would, carrying a live
-  layout's state (`layouts.md`).
+  layout's state (`layouts.md`). `p.Remount()` returns the page a
+  remount after a restart would: a fresh copy, given what the page and
+  its live layout keep (`Keep`, above), so a test shows what a deploy
+  loses.
 - `loomtest.AssertNotFound(t, app, path)` checks that the page at path
   calls `c.NotFound` in Mount; `Mount` fails the test if it does.
 - `p.Info(loom.Message{...})` delivers a message as if published on a

@@ -84,6 +84,9 @@ const (
 	RT449 = "RT449" // c.Meta changed after the page loaded, where nothing reads it
 	RT450 = "RT450" // c.Meta's StructuredData can't be encoded as JSON
 	RT451 = "RT451" // loom dev can't tell which main package to run
+	RT452 = "RT452" // a page's or live layout's Keep doesn't return a pointer to a JSON-encodable struct
+	RT453 = "RT453" // pages keep state (Keep) but the app has no Config.Secret to seal it with
+	RT454 = "RT454" // the state a page keeps is too large for a remount to send back
 )
 
 // panicError converts a recovered panic into an RT402 error, locating the

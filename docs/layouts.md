@@ -268,6 +268,14 @@ g.Live("/settings", &SettingsPage{}, templates.Settings)
   more. If the new page doesn't mount (an auth refusal, `c.NotFound`, a
   panic), the old page keeps its layout. A page load, a remount or a
   page in another layout mounts a fresh state.
+- **It can survive a restart.** A remount (after a restart or deploy)
+  mounts a fresh state, so a player would change its tune. The part a
+  `Keep` method returns comes back before Mount, sealed in the browser
+  meanwhile (`live.md`, "Keeping state across a remount"):
+
+  ```go
+  func (p *Player) Keep() any { return &p.playing } // station, track ids, queue
+  ```
 - `loom.manifest` lists the layout's events as handled by its `Events`,
   and marks the page's events it handles. `loom inspect` shows its
   assigns as `layout_assigns`. `loomtest.NoLayout()` still mounts the
@@ -322,7 +330,8 @@ func (p *ComposerPage) create(c *loom.Ctx, payload loom.Payload) {
   the same URL leaving no session (`X-Loom-Navigate: -`) and swaps in a
   new one, keeping the document and the user's input: it restores each
   named form field by name and sends the form's `on:change`, if it has
-  one, so the new session sees it. If the root layout changed (a deploy
+  one, so the new session sees it, and sends back the state the page
+  and its live layout keep (`Keep`, `live.md`). If the root layout changed (a deploy
   edited it) the page reloads instead.
   `loom dev` remounts the same way after a rebuild.
 - HEEx's `<.link navigate={...}>` doesn't exist: write `<a href>`

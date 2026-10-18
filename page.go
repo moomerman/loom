@@ -26,6 +26,7 @@ func checkPage(page Page, tmpl render.Template, layout *layout) {
 	}
 	where := callerOutsideLoom()
 	checkParamsHandler(page, where)
+	checkKeeper(page, where)
 	m, ok := reflect.TypeOf(page).MethodByName("Assigns")
 	want := tmpl.AssignsType()
 	if !ok || m.Type.NumIn() != 2 || m.Type.In(1) != ctxType || m.Type.NumOut() != 1 || m.Type.Out(0) != want {

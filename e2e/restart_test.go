@@ -107,11 +107,11 @@ func TestRestartMidForm(t *testing.T) {
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(s.url()),
 		waitFor("#loom-root.loom-connected .todo-list li"),
-		eval(`document.getElementById("loom-root").dataset.sid`, &sid),
+		eval(`window.oldSID = document.getElementById("loom-root").dataset.sid`, &sid),
 		typeInto(".new-todo input", "Buy bread"),
 		do(s.stop),
 		do(s.start),
-		waitJS(`document.getElementById("loom-root").dataset.sid !== `+quote(sid)+` && document.getElementById("loom-root").classList.contains("loom-connected")`),
+		waitJS(`document.getElementById("loom-root").dataset.sid !== window.oldSID && document.getElementById("loom-root").classList.contains("loom-connected")`),
 		eval(`document.querySelector(".new-todo input").value`, &typed),
 		typeInto(".new-todo input", "\n"),
 		waitJS(`document.querySelectorAll(".todo-list li").length === 3`),
@@ -145,7 +145,7 @@ func TestRestartMovesStaleEvent(t *testing.T) {
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(s.url()),
 		waitFor("#loom-root.loom-connected "+clear),
-		eval(`document.getElementById("loom-root").dataset.sid`, &sid),
+		eval(`window.oldSID = document.getElementById("loom-root").dataset.sid`, &sid),
 		do(s.stop),
 		click(clear),
 		chromedp.Sleep(300*time.Millisecond), // the send fails and waits to retry
@@ -155,7 +155,7 @@ func TestRestartMovesStaleEvent(t *testing.T) {
 			}
 		}),
 		do(s.start),
-		waitJS(`document.getElementById("loom-root").dataset.sid !== `+quote(sid)+` && sessionStorage.loomOutbox === "[]"`),
+		waitJS(`document.getElementById("loom-root").dataset.sid !== window.oldSID && sessionStorage.loomOutbox === "[]"`),
 	)
 	if err != nil {
 		t.Fatal(err)

@@ -6,7 +6,10 @@ keep them are in `AGENTS.md`.
 - **One page model, the live page.** Server-rendered, diffed over SSE
   down and POST up, one goroutine per page. Events are restart-safe: the
   browser resends unacknowledged ones and the server runs each once
-  (`loom_clients`).
+  (`loom_clients`). Page state lives in memory; what must outlive a
+  restart, the page names (`Keep`) and the browser holds, sealed with
+  `Config.Secret`, so a remount brings it back with no table and no
+  sticky node.
 - **Templates** are `.hx` files with a small pure expression language,
   compiled to Go statics plus dynamic slots. There is one way to write
   each thing, and the others are compile errors with a fix.

@@ -698,6 +698,15 @@ A broadcast (`app.Broadcast`, a job's `c.Broadcast`) encoded to more than Postgr
 ### RT451
 `loom dev` was run with no package and couldn't tell which main package runs the app. With no argument it runs `.` if that is a main package; otherwise the main package under `cmd/` (Go's convention, as `loom new` makes it): the one with a `//loom:dev` line, else the only one, else the only one that calls `loom.New` and `Run`. The error lists the candidates. Add a `//loom:dev` line to the app's `main.go` (say, above `func main`), or name the package: `loom dev ./cmd/myapp`.
 
+### RT452
+At startup, from `app.Live` or `loom.LiveLayout`: a page's or live layout's `Keep` method returns something a remount can't keep: not a pointer to a struct (a struct value, a map, nil), a struct `encoding/json` can't encode (a channel, a func), or one with no exported fields, which would encode as `{}`. Return a pointer to a struct field of the state with exported fields of plain data, e.g. `func (p *Player) Keep() any { return &p.playing }` (`live.md`, "Keeping state across a remount").
+
+### RT453
+At startup, from `App.Run` outside dev: a page or live layout keeps state across a remount (`Keep`), but `loom.Config.Secret` is empty. Kept state is sealed with the secret; without one the key would change with each restart, the moment kept state is for, so it would never come back. Set `Secret: os.Getenv("LOOM_SECRET")`, with a value made by `openssl rand -base64 32`, the same on every node. Dev and tests seal with a key of their own.
+
+### RT454
+The state a page and its live layout keep (`Keep`) came to more than `loom.MaxKept` (6 KB) sealed, after compression, so it isn't kept: it travels back in a request header on a remount, and proxies limit headers. Reported like `c.Fail` (once per change) and the page keeps running; a remount after it starts afresh rather than from older state. Keep ids rather than records, loaded again in Mount, and bound any list.
+
 ### RT424
 The server didn't run an event and the browser should send it again: the server is shutting down (the answer is 503 with `Retry-After`), or it couldn't read `loom_clients` to tell whether the event already ran. Nothing to fix in the app: loom.js keeps the event in its outbox and resends it, to the restarted server if need be, where it runs once. If it persists, check the database connection.
 

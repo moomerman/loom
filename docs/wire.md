@@ -92,7 +92,7 @@ resends the statics of a block that stays in place.
 - `GET /path`: the root layout's document. Its `{render_slot(inner_block)}`
   is the live tree's HTML inside `<div id="loom-root" data-sid="...">`,
   then the encoded tree in
-  `<script id="loom-tree" type="application/json">{"v": 1, "tree": ..., "root": "...", "p": 1}</script>`
+  `<script id="loom-tree" type="application/json">{"v": 1, "tree": ..., "root": "...", "p": 1, "kept": "..."}</script>`
   for the client to take over from. `root` fingerprints the root
   layout's markup and the scripts' URLs, and `p` is the wire protocol's
   version (this document's: 1); a remount whose new tree differs in
@@ -131,8 +131,8 @@ session's version. Stream events:
 
 | Event | Data | Meaning |
 |---|---|---|
-| `diff` | `{"v": 3, "diff": {...}, "title": "..."}` | apply to version 2 to get version 3 |
-| `full` | `{"v": 3, "tree": {...}, "title": "..."}` | replace the tree: sent first when the browser's `v` is stale, and after the page restarts |
+| `diff` | `{"v": 3, "diff": {...}, "title": "...", "kept": "..."}` | apply to version 2 to get version 3 |
+| `full` | `{"v": 3, "tree": {...}, "title": "...", "kept": "..."}` | replace the tree: sent first when the browser's `v` is stale, and after the page restarts |
 | `reload` | `{}` | the session is gone; remount the page (`layouts.md`) |
 | `navigate` | `{"to": "/issues/7"}` | the page called `c.Navigate`: follow it as a link |
 | `patch` | `{"to": "/team/ENG?view=active", "replace": false}` | the page called `c.Patch`: push the URL to the history (replace the current entry if `replace`), after the `diff` before it |
@@ -146,7 +146,8 @@ running the path's handler, and otherwise serves the page as usual with
 stream for the new page's `sid`. A remount navigates to the current URL
 with `X-Loom-Navigate: -` (no session to leave): the server swaps any
 page, and the browser reloads instead if the new page's `root` differs
-from its own.
+from its own. A remount also sends `X-Loom-Kept` with the page's latest
+`kept`.
 
 A navigation to another URL of the session's own route, on a page with
 `HandleParams`, patches instead: the session runs `HandleParams` with the
@@ -161,6 +162,13 @@ has it only when the title changed, and has no `diff` when only the title
 changed; a `full` always has it. The client sets `document.title` to the
 `<title>` element's `data-prefix` + (title, or `data-default` when empty)
 + `data-suffix`, as rendered by `<.live_title>` (see `layouts.md`).
+
+`kept` is the state the page and its live layout keep across a remount
+(`Keep`, `live.md`): JSON, compressed and sealed with the app's secret
+(AES-GCM), base64url, opaque to the browser; `""` when nothing is kept.
+The tree always has it; a `full` always has it, and a `diff` only when
+it changed, with no `diff` when only it changed. The browser holds the
+latest and sends it back as `X-Loom-Kept` on a remount, and only then.
 
 A client that receives a diff whose `v` isn't one more than its own has
 missed an update: it reconnects with its version and gets a `full`. The
