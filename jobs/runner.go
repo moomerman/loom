@@ -706,7 +706,7 @@ func (r *Runner) insert(ctx context.Context, nj NewJob) (res Result, err error) 
 // execute runs one attempt of a fetched job and records its outcome.
 // sync runs Perform on the calling goroutine (RunDue).
 func (r *Runner) execute(ctx context.Context, rec *Record, sync bool) {
-	ctx = trace.WithTrace(ctx, rec.Trace)
+	ctx = trace.WithTally(trace.WithTrace(ctx, rec.Trace), &trace.Tally{}) // the attempt's statements, for job.finish
 	start := time.Now()
 	r.stream().Emit(ctx, trace.JobStart, "id", rec.ID, "type", rec.Type, "queue", rec.Queue, "attempt", rec.Attempt)
 	r.mu.Lock()
@@ -824,6 +824,7 @@ func (r *Runner) record(ctx context.Context, rec *Record, err error, start time.
 		state = "snoozed"
 	}
 	attrs := []any{"id", rec.ID, "type", rec.Type, "queue", rec.Queue, "attempt", rec.Attempt, "ms", time.Since(start), "state", state}
+	attrs = append(attrs, trace.TallyOf(ctx).Attrs()...)
 	if f.Error != nil {
 		attrs = append(attrs, "code", f.Error.Code)
 	}

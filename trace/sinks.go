@@ -58,8 +58,9 @@ type Counters struct {
 type statKey struct{ name, key string }
 
 type counter struct {
-	errors uint64
-	timing Timing
+	errors  uint64
+	queries int64 // the "queries" attributes, in all
+	timing  Timing
 }
 
 // maxKeys caps the keys counted per name; later ones count as "other",
@@ -86,6 +87,9 @@ type Stat struct {
 	By     string `json:"by,omitempty"`  // the attribute Key is a value of: route, type or table
 	Key    string `json:"key,omitempty"` // e.g. the route "/team/{key}"
 	Errors uint64 `json:"errors"`        // at level Error
+	// Queries is the database statements the events ran (their "queries"
+	// attribute), in all: divided by Count, the queries per action.
+	Queries int64 `json:"queries,omitempty"`
 	TimingSummary
 }
 
@@ -119,6 +123,9 @@ func (c *Counters) Emit(e Event) {
 	if e.Level >= slog.LevelError {
 		s.errors++
 	}
+	if n, ok := e.Attrs["queries"].(int64); ok {
+		s.queries += n
+	}
 	ms, ok := e.Attrs["ms"].(float64)
 	s.timing.Add(e.Time, ms, ok)
 }
@@ -130,7 +137,7 @@ func (c *Counters) Stats(now time.Time) []Stat {
 	defer c.mu.Unlock()
 	out := make([]Stat, 0, len(c.stats))
 	for k, s := range c.stats {
-		st := Stat{Name: k.name, Key: k.key, Errors: s.errors, TimingSummary: s.timing.Summary(now)}
+		st := Stat{Name: k.name, Key: k.key, Errors: s.errors, Queries: s.queries, TimingSummary: s.timing.Summary(now)}
 		if k.key != "" {
 			st.By = keyAttr(k.name)
 		}

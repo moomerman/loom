@@ -92,11 +92,14 @@ func (a *App) startSession(rt *route, r *http.Request, browser string, carry *ca
 	start := time.Now()
 	r = r.WithContext(trace.WithTrace(r.Context(), trace.NewID()))
 	defer func() {
-		sid := ""
+		sid, attrs := "", []any(nil)
 		if s != nil {
 			sid = s.id
+			if s.view != nil {
+				attrs = s.view.Tally().Attrs()
+			}
 		}
-		a.stream.Emit(r.Context(), trace.PageMount, "sid", sid, "route", rt.path, "ms", time.Since(start), "outcome", outcome(err))
+		a.stream.Emit(r.Context(), trace.PageMount, append([]any{"sid", sid, "route", rt.path, "ms", time.Since(start), "outcome", outcome(err)}, attrs...)...)
 	}()
 	if err := a.roomForSession(); err != nil {
 		return nil, "", err
@@ -232,6 +235,7 @@ func (s *session) handle(ev pageEvent) {
 	var err error
 	defer func() { s.handled(ev, start, sent, res, err) }()
 	s.view.setTrace(ev.trace)
+	s.view.Tally().Reset()
 	var d map[string]any
 	switch {
 	case ev.watch:
@@ -589,6 +593,7 @@ func (s *session) handled(ev pageEvent, start time.Time, sent int, res eventResu
 		attrs = append(attrs, "event", ev.name)
 	}
 	attrs = append(attrs, "ms", time.Since(start), "diff", sent > 0, "bytes", sent, "outcome", outcome(err))
+	attrs = append(attrs, s.view.Tally().Attrs()...)
 	if res.err != nil {
 		attrs = append(attrs, "code", res.err.Code)
 	} else if e := (*Error)(nil); errors.As(err, &e) {

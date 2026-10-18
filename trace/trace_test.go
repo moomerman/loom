@@ -146,7 +146,7 @@ func TestStats(t *testing.T) {
 	for _, ms := range []float64{1, 3} {
 		s.Emit(context.Background(), trace.PageEvent, "ms", ms, "route", "/")
 	}
-	s.Emit(context.Background(), trace.PageEvent, "ms", 5.0, "route", "/team/{key}")
+	s.Emit(context.Background(), trace.PageEvent, "ms", 5.0, "route", "/team/{key}", "queries", int64(4))
 	s.Emit(context.Background(), trace.Error)
 	now = now.Add(2 * time.Minute)
 	s.Emit(context.Background(), trace.PageEvent, "ms", 2.0, "route", "/")
@@ -164,7 +164,7 @@ func TestStats(t *testing.T) {
 	if root.P95MS < 2.4 || root.P95MS > 3 {
 		t.Errorf("/ p95 = %v, want about 3", root.P95MS)
 	}
-	if team := got[2]; team.Key != "/team/{key}" || team.Count != 1 {
+	if team := got[2]; team.Key != "/team/{key}" || team.Count != 1 || team.Queries != 4 {
 		t.Errorf("team stat = %+v", team)
 	}
 }

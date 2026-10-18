@@ -120,7 +120,8 @@ func newPage(t testing.TB, app *loom.App, v *loom.View, err error, start time.Ti
 	if err != nil {
 		t.Fatalf("%s: %v", what, err)
 	}
-	app.Emit(context.Background(), trace.PageMount, "sid", "test", "route", v.Route(), "ms", time.Since(start), "outcome", "ok", "trace", v.Trace())
+	app.Emit(context.Background(), trace.PageMount, append([]any{"sid", "test", "route", v.Route(), "ms", time.Since(start), "outcome", "ok", "trace", v.Trace()}, v.Tally().Attrs()...)...)
+	v.Tally().Reset()
 	v.NewTopics() // Listen subscribes to every topic
 	p := &Page{t: t, app: app, view: v, tree: roundTrip(t, v.Tree()), nav: v.Navigation(), now: now, ps: ps, opts: o}
 	v.SetClock(func() time.Time { return p.now })

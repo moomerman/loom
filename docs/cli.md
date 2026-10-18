@@ -561,11 +561,14 @@ So a route whose watch re-renders hundreds of times a minute, or a job
 type that dominates the queue, is one line. Each has its errors, its
 count in the last minute (`last_minute`, the current rate), and for
 those that time something the total, mean, p95 (within 25%) and max
-`ms`. After 200 keys for one name, the rest count as `other`.
+`ms`. `queries` totals the database statements the events ran (their
+`queries` attribute), so the table's QUERIES EACH column is the
+queries per page action or job attempt. After 200 keys for one name,
+the rest count as `other`.
 
 ```json
 {"started": "2026-10-13T14:00:00Z", "sessions": 3, "events": [
-  {"name": "page.event", "by": "route", "key": "/team/{key}", "errors": 0, "count": 41, "last_minute": 12,
+  {"name": "page.event", "by": "route", "key": "/team/{key}", "errors": 0, "queries": 82, "count": 41, "last_minute": 12,
    "timed": 41, "total_ms": 73.8, "mean_ms": 1.8, "p95_ms": 4.6, "max_ms": 12.4}
 ]}
 ```

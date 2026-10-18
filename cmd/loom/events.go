@@ -191,10 +191,14 @@ func runStats(args []string, stdout, stderr io.Writer) int {
 			}
 			fmt.Fprintf(w, "since %s (%s), %d live pages open\n\n", r.Started.Local().Format("15:04:05"), time.Since(r.Started).Round(time.Second), r.Sessions)
 			tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-			fmt.Fprintln(tw, "EVENT\tKEY\tCOUNT\tLAST MIN\tERRORS\tMEAN MS\tP95 MS\tMAX MS\t")
+			fmt.Fprintln(tw, "EVENT\tKEY\tCOUNT\tLAST MIN\tERRORS\tMEAN MS\tP95 MS\tMAX MS\tQUERIES EACH\t")
 			for _, s := range r.Events {
 				mean, p95, most := timings(s.TimingSummary)
-				fmt.Fprintf(tw, "%s\t%s\t%d\t%d\t%d\t%s\t%s\t%s\t\n", s.Name, s.Key, s.Count, s.LastMinute, s.Errors, mean, p95, most)
+				each := "-"
+				if s.Queries > 0 {
+					each = fmt.Sprintf("%.1f", float64(s.Queries)/float64(s.Count))
+				}
+				fmt.Fprintf(tw, "%s\t%s\t%d\t%d\t%d\t%s\t%s\t%s\t%s\t\n", s.Name, s.Key, s.Count, s.LastMinute, s.Errors, mean, p95, most, each)
 			}
 			return tw.Flush()
 		}, err

@@ -34,6 +34,7 @@ type View struct {
 	root    *layout // the root layout, or nil to render the live root alone
 	ctx     *Ctx
 	base    context.Context  // the page's context, without a trace
+	tally   trace.Tally      // the statements of the current action, in base (Tally)
 	trace   string           // the trace id of the latest action (Trace)
 	next    string           // the trace id the next action takes, if set (setTrace)
 	auth    []AuthFunc       // checked before Mount and every event
@@ -167,7 +168,8 @@ func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carrie
 	page := bindPage(clone)
 	scope := rt.styledScope()
 	ctx, cancel := context.WithCancel(context.WithoutCancel(r.Context()))
-	v := &View{page: page, route: rt, tmpl: rt.tmpl, auth: rt.auth, watch: rt.watch, scope: scope, cancel: cancel, base: ctx, ctx: &Ctx{SID: sid, Request: r, app: rt.group.app, scope: scope}}
+	v := &View{page: page, route: rt, tmpl: rt.tmpl, auth: rt.auth, watch: rt.watch, scope: scope, cancel: cancel, ctx: &Ctx{SID: sid, Request: r, app: rt.group.app, scope: scope}}
+	v.base = trace.WithTally(ctx, &v.tally)
 	v.begin(trace.ID(r.Context())) // the page load's trace, if the runtime gave one
 	if l := rt.group.appLayout(); l != nil && l.live != nil && carry != nil {
 		v.live, v.ctx.layout = bindPage(carry.state), carry.state
@@ -450,6 +452,12 @@ func (v *View) Trace() string { return v.trace }
 // setTrace makes the next action use id as its trace, as the runtime
 // does for a browser event (its client and sequence).
 func (v *View) setTrace(id string) { v.next = id }
+
+// Tally counts the statements run under the page's context since the
+// last ResetTally: the session resets it before each action and reports
+// it on the action's page.* event. A goroutine a handler started that
+// still uses c.Context() counts toward whichever action is current.
+func (v *View) Tally() *trace.Tally { return &v.tally }
 
 // begin starts an action: it picks its trace id (setTrace's, or cause,
 // or a new one) and puts it in the page's context, so the action's

@@ -80,3 +80,40 @@ func TestPageEvents(t *testing.T) {
 	p.AssertEvent("page.info", "topic", "pings", "diff", true)
 	q.AssertEvent(t, "job.start", "attempt", 1)
 }
+
+// sqlPage runs n statements on each "query" click.
+type sqlPage struct {
+	db *loom.DB
+	n  int
+}
+
+func (p *sqlPage) Mount(c *loom.Ctx) {}
+
+func (p *sqlPage) Events() loom.Events {
+	return loom.Events{"query": func(c *loom.Ctx, _ loom.Payload) {
+		for range p.n {
+			if _, err := p.db.Exec(c.Context(), "SELECT 1"); err != nil {
+				c.Fail(err)
+			}
+		}
+	}}
+}
+
+func (p *sqlPage) Assigns(c *loom.Ctx) hxtest.CounterAssigns {
+	return hxtest.CounterAssigns{Events: []render.Event{{Name: "query"}}}
+}
+
+// Each action's page event counts the statements it ran, so a test can
+// pin a handler's query count: an N+1 shows up as a failing number.
+func TestPageEventCountsQueries(t *testing.T) {
+	db := loomtest.DB(t)
+	app := loom.New(loom.Config{})
+	app.UseDB(db)
+	app.Live("/", &sqlPage{db: db, n: 3}, hxtest.Counter)
+	p := loomtest.Mount(t, app, "/")
+	p.AssertEvent("page.mount", "queries", 0)
+	p.Event("query", nil)
+	p.AssertEvent("page.event", "event", "query", "queries", 3)
+	p.Event("query", nil)
+	p.AssertEvent("page.event", "queries", 3) // counted per action, not in all
+}

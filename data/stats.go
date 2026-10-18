@@ -111,11 +111,13 @@ func (db *DB) QueryStats() []QueryStat {
 // Record counts a statement that code ran on db.SQL() directly, as
 // Exec and Query count their own: in QueryStats, and as db.slow when it
 // ran for the slow threshold or longer. rows is the rows it returned or
-// changed, if known (else 0). Loom's Postgres job store uses it, since
+// changed, if known (else 0). The statement also counts toward the
+// action ctx belongs to (trace.Tally). Loom's Postgres job store uses it, since
 // it needs database/sql's own types for its locks and LISTEN; app code
 // uses Exec and Query, which record themselves.
 func (db *DB) Record(ctx context.Context, query string, start time.Time, rows int64, err error) {
 	d := time.Since(start)
 	db.queries.add(query, start, d, rows, err != nil)
+	trace.TallyOf(ctx).Add(d)
 	db.slowly(ctx, query, d)
 }

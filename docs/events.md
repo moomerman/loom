@@ -68,6 +68,7 @@ check them, and `q.AssertEvent(t, name, ...)` checks a job queue's:
 ```go
 p.Submit("form", loom.Payload{"title": "Milk"})
 p.AssertEvent("tx.commit", "statements", 1)
+p.AssertEvent("page.event", "queries", 3) // pins the handler's query count
 p.AssertEvent("job.enqueue", "type", "todo.Notify")
 q.Drain(t)
 p.AssertEvent("job.finish", "type", "todo.Notify", "state", "completed")
@@ -98,12 +99,15 @@ lists these.
 
 ### page.mount
 Debug. A page load: `sid`, `route`, `ms`, `outcome` (ok, redirect,
-denied, limited, full or failed).
+denied, limited, full or failed), and `queries` and `query_ms`: the
+database statements the mount ran under `c.Context()`, and their time.
 
 ### page.event
 Debug. A browser event handled: `sid`, `route`, `event`, `ms`, `diff`
 (whether an update was sent), `bytes` (its size), `outcome` (ok,
-refused, denied, limited or failed) and `code` if it didn't succeed.
+refused, denied, limited or failed), `code` if it didn't succeed, and
+`queries` and `query_ms` as page.mount: the statements the handler and
+the re-render ran. A number that grows with the data is an N+1.
 
 ### page.info
 Debug. A PubSub message handled in HandleInfo: as page.event, with
@@ -213,8 +217,9 @@ Debug. An attempt began: `id`, `type`, `queue`, `attempt`.
 
 ### job.finish
 Debug. An attempt ended: `id`, `type`, `queue`, `attempt`, `ms`,
-`state` (completed, retryable, discarded, cancelled or snoozed) and
-`code` if it failed. A failure also emits `error`.
+`state` (completed, retryable, discarded, cancelled or snoozed),
+`code` if it failed, and `queries` and `query_ms`: the statements the
+attempt ran under its `ctx`. A failure also emits `error`.
 
 ### cron.tick
 Debug. The leader enqueued a cron entry's tick: `cron`, `type`, `id`,
