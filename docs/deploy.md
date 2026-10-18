@@ -120,6 +120,16 @@ Give the app a bucket on an S3-compatible service in
 every node. `storage.Dir` suits one server only: other nodes can't read
 its disk. `Run` checks the bucket before serving (SG002 to SG005).
 
+## Looking inside
+
+Set `LOOM_INSPECT_TOKEN` (`openssl rand -hex 32`) on the app, and the
+CLI's read-only commands work against it from anywhere with the same
+token: `loom stats`, `loom queries`, `loom events`, `loom errors`,
+`loom sessions`, `loom jobs`, `loom queues` and `loom nodes`, with
+`--url https://app.example.com` (`cli.md`, "Asking a running app").
+The counts and the last 2000 events are each node's own, since the app
+started; ask each node by its own address to see them all.
+
 ## Postgres
 
 - Postgres 14 or later, reached directly or through a pooler in

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/moomerman/loom/internal/hxtest"
 )
 
 func getJSON(t *testing.T, url string, v any) int {
@@ -75,6 +77,62 @@ func TestDevEndpointsNeedToken(t *testing.T) {
 	if code := get("the token loom dev made"); code != 200 {
 		t.Errorf("loom dev's token = %d, want 200", code)
 	}
+}
+
+// With Config.InspectToken, a deployed app answers the read-only
+// endpoints to a request carrying it, from anywhere and with dev mode
+// off, and nothing that shows a page's state or changes anything.
+func TestInspectToken(t *testing.T) {
+	const token = "0123456789abcdef0123456789abcdef"
+	app := New(Config{InspectToken: token, Dev: DevOff})
+	app.Live("/", &counterPage{}, hxtest.Counter)
+	srv := newServer(t, app)
+	get := func(method, path, token string) int {
+		req, _ := http.NewRequest(method, srv.URL+path, nil)
+		req.Header.Set("X-Forwarded-For", "203.0.113.9") // a remote caller
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.StatusCode
+	}
+	for _, tc := range []struct {
+		method, path, token string
+		want                int
+	}{
+		{"GET", "/_loom/dev/stats", "", 404},
+		{"GET", "/_loom/dev/stats", "0123456789abcdef0123456789abcdeX", 404},
+		{"GET", "/_loom/dev/stats", token, 200},
+		{"GET", "/_loom/dev/queries", token, 200},
+		{"GET", "/_loom/dev/sessions", token, 200},
+		{"GET", "/_loom/dev/events", token, 200},
+		{"GET", "/_loom/dev/errors", token, 200},
+		{"GET", "/_loom/dev/routes", token, 200},
+		{"GET", "/_loom/dev/sessions/abc", token, 403}, // assigns and HTML
+		{"POST", "/_loom/dev/sessions/abc/event", token, 403},
+		{"POST", "/_loom/dev/render", token, 403},
+		{"GET", "/_loom/dev/mail", token, 403},
+		{"POST", "/_loom/dev/jobs/1/retry", token, 403},
+		{"GET", "/_loom/preview", token, 403},
+	} {
+		if got := get(tc.method, tc.path, tc.token); got != tc.want {
+			t.Errorf("%s %s (token %v) = %d, want %d", tc.method, tc.path, tc.token != "", got, tc.want)
+		}
+	}
+}
+
+// A short inspect token is a config error (RT441): it would be guessable.
+func TestInspectTokenTooShort(t *testing.T) {
+	defer func() {
+		if err, _ := recover().(error); code(err) != RT441 || !strings.Contains(err.Error(), "InspectToken") {
+			t.Errorf("New with a short token: %v, want RT441", err)
+		}
+	}()
+	New(Config{InspectToken: "short"})
 }
 
 // Run refuses dev mode from LOOM_DEV without loom dev's token (RT439),

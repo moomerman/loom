@@ -247,17 +247,48 @@ func (a *App) devMux() *http.ServeMux {
 
 // serveDev serves /_loom/dev/ and the preview gallery, /_loom/preview, in
 // dev mode, to the local machine only.
+// With Config.InspectToken, a request carrying it may also read the
+// endpoints inspectable allows, in any mode and from anywhere.
 func (a *App) serveDev(w http.ResponseWriter, r *http.Request) {
-	if !a.dev {
+	switch {
+	case a.dev && a.devRequest(r):
+	case a.inspectRequest(r):
+		if !inspectable(r) {
+			http.Error(w, "the inspect token reads what the app does, not a page's state, and changes nothing; this endpoint needs dev mode (loom dev)", http.StatusForbidden)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+	case !a.dev:
 		http.NotFound(w, r)
 		return
-	}
-	if !a.devRequest(r) {
+	default:
 		http.Error(w, "loom dev endpoints only answer local requests through loom dev", http.StatusForbidden)
 		return
 	}
 	a.devOnce.Do(func() { a.devHandler = a.devMux() })
 	a.devHandler.ServeHTTP(w, r)
+}
+
+// inspectRequest reports whether r carries the app's InspectToken.
+func (a *App) inspectRequest(r *http.Request) bool {
+	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	return a.cfg.InspectToken != "" && ok && subtle.ConstantTimeCompare([]byte(token), []byte(a.cfg.InspectToken)) == 1
+}
+
+// inspected are the dev endpoints the inspect token may read: what the
+// app does and how it performs. A session's assigns and HTML, rendering,
+// events, the mailbox, storage and every POST stay dev-only, since they
+// show users' data or change things.
+var inspected = map[string]bool{
+	"routes": true, "manifest": true, "validate": true, "sessions": true, "errors": true, "events": true,
+	"stats": true, "queries": true, "topics": true, "jobs": true, "queues": true, "nodes": true, "cron": true,
+}
+
+var jobPath = regexp.MustCompile(`^jobs/[0-9]+$`)
+
+func inspectable(r *http.Request) bool {
+	p, ok := strings.CutPrefix(r.URL.Path, "/_loom/dev/")
+	return ok && r.Method == http.MethodGet && (inspected[p] || jobPath.MatchString(p))
 }
 
 // DevOnly is a group option for dev tools served as ordinary pages, such

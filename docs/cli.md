@@ -294,6 +294,25 @@ Exit status: 0 on success; 1 when the app answers with an error, printed
 The endpoints answer only requests from the local machine and don't exist
 unless dev mode is on (`Config.Dev`), so they are never on in production.
 
+A deployed app answers some of them to a request carrying its inspect
+token (`Config.InspectToken`, default `$LOOM_INSPECT_TOKEN`, at least
+32 characters): pass the same token with `--token` (default
+`$LOOM_INSPECT_TOKEN`; `loom mcp` and `loom doctor` read the variable)
+and the app's address with `--url`:
+
+```
+LOOM_INSPECT_TOKEN=... loom queries --url https://app.example.com
+```
+
+The token reads what the app does and how it performs: `loom routes`,
+`manifest`, `sessions`, `errors`, `events` (and `trace`), `stats`,
+`queries`, `jobs` and `jobs inspect`, `queues`, `nodes`, `cron`, and
+`doctor`'s app checks. Everything that shows a page's state (`loom
+inspect`'s assigns and HTML), renders, sends an event, reads the
+mailbox or storage, or changes a job answers 403 to it: those stay in
+dev. Events can carry URLs and user ids, so keep the token as secret
+as the database's.
+
 ### loom routes
 
 ```

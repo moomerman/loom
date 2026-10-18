@@ -476,7 +476,7 @@ func runMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 2
 	}
-	c := &devClient{base: strings.TrimRight(*base, "/"), http: &http.Client{Timeout: 30 * time.Second}, db: db}
+	c := &devClient{base: strings.TrimRight(*base, "/"), http: &http.Client{Timeout: 30 * time.Second}, db: db, token: os.Getenv("LOOM_INSPECT_TOKEN")}
 	if err := serveMCP(c, stdin, stdout); err != nil {
 		fmt.Fprintf(stderr, "loom mcp: %v\n", err)
 		return 2

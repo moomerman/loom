@@ -42,7 +42,7 @@ func runDoctor(args []string, stdout, stderr io.Writer) int {
 	if fs.NArg() == 1 {
 		path = fs.Arg(0)
 	}
-	checks := doctor(path, o, &devClient{base: strings.TrimRight(*base, "/"), http: &http.Client{Timeout: 5 * time.Second}})
+	checks := doctor(path, o, &devClient{base: strings.TrimRight(*base, "/"), http: &http.Client{Timeout: 5 * time.Second}, token: os.Getenv("LOOM_INSPECT_TOKEN")})
 	failed := false
 	for _, c := range checks {
 		failed = failed || !c.OK

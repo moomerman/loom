@@ -128,6 +128,15 @@ type Config struct {
 	// (dev.go). DevOn is for tests and tools; never use it in
 	// production.
 	Dev DevMode
+	// InspectToken lets the loom CLI and MCP tools ask a deployed app
+	// about itself: requests carrying it as "Authorization: Bearer
+	// TOKEN" may read the /_loom/dev/ endpoints that show what the app
+	// does, from anywhere, with dev mode off (stats, queries, events,
+	// errors, sessions, routes, jobs, queues, nodes, cron), but not
+	// those that show a page's state or change anything. Empty (the
+	// default) means LOOM_INSPECT_TOKEN, and none if that is unset. At
+	// least MinSecretLen characters: make one with `openssl rand -hex 32`.
+	InspectToken string
 	// Jobs is what this node does with background jobs, so web and
 	// worker nodes can be deployed apart: JobsRun (the default) serves
 	// pages and runs jobs and cron; JobsEnqueueOnly serves pages and
@@ -210,6 +219,12 @@ func (cfg Config) withDefaults() (Config, error) {
 	}
 	if cfg.Secret != "" && len(cfg.Secret) < MinSecretLen {
 		return cfg, invalid("Secret", fmt.Sprintf("is %d characters, fewer than %d", len(cfg.Secret), MinSecretLen), "make one with `openssl rand -base64 32` and pass it from the environment, e.g. os.Getenv(\"LOOM_SECRET\")")
+	}
+	if cfg.InspectToken == "" {
+		cfg.InspectToken = os.Getenv("LOOM_INSPECT_TOKEN")
+	}
+	if cfg.InspectToken != "" && len(cfg.InspectToken) < MinSecretLen {
+		return cfg, invalid("InspectToken", fmt.Sprintf("(or LOOM_INSPECT_TOKEN) is %d characters, fewer than %d", len(cfg.InspectToken), MinSecretLen), "make one with `openssl rand -hex 32`")
 	}
 	if strings.ContainsAny(cfg.CSP, "\r\n") {
 		return cfg, invalid("CSP", "has a line break", "write the policy on one line, directives separated by semicolons")

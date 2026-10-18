@@ -50,9 +50,17 @@ func devAddr() string {
 
 // devClient talks to an app's /_loom/dev/ endpoints.
 type devClient struct {
-	base string
-	http *http.Client
-	db   *dbOpts // the database, for loom mcp's database tools
+	base  string
+	http  *http.Client
+	db    *dbOpts // the database, for loom mcp's database tools
+	token string  // the app's InspectToken, for a deployed app (--token, $LOOM_INSPECT_TOKEN)
+}
+
+// authorize adds the inspect token to req, if there is one.
+func (c *devClient) authorize(req *http.Request) {
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
 }
 
 // apiError is an error answered by the app, in the form of docs/errors.md.
@@ -89,6 +97,7 @@ func (c *devClient) do(method, path string, body []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", errNoApp, err)
 	}
+	c.authorize(req)
 	res, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: nothing answered at %s (%v); start the app with `loom dev`, or pass --url", errNoApp, c.base, err)
@@ -106,7 +115,10 @@ func (c *devClient) do(method, path string, body []byte) ([]byte, error) {
 		return data, &e
 	}
 	if res.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("%w: the app at %s isn't in dev mode; run it with `loom dev`, or set App.Dev", errNoApp, c.base)
+		if c.token != "" {
+			return nil, fmt.Errorf("%w: the app at %s didn't accept the inspect token: set the same LOOM_INSPECT_TOKEN (or Config.InspectToken) on the app, or run it with `loom dev`", errNoApp, c.base)
+		}
+		return nil, fmt.Errorf("%w: the app at %s isn't in dev mode; run it with `loom dev`, or set App.Dev; for a deployed app, pass its inspect token with --token or $LOOM_INSPECT_TOKEN", errNoApp, c.base)
 	}
 	return nil, fmt.Errorf("%w: %s %s: %s: %s", errNoApp, method, path, res.Status, strings.TrimSpace(string(data)))
 }
@@ -125,6 +137,7 @@ func introspectFlags(name, usageLine string, args []string, stdout, stderr io.Wr
 	fs := newCommand(name, usageLine, "print the app's JSON", stderr)
 	asJSON := fs.JSON
 	url := fs.String("url", appURL(), "the app's URL (default $LOOM_URL, or http://localhost:$PORT, or "+defaultURL+")")
+	token := fs.String("token", os.Getenv("LOOM_INSPECT_TOKEN"), "a deployed app's inspect token (default $LOOM_INSPECT_TOKEN)")
 	assigns := ""
 	if name == "render" {
 		fs.StringVar(&assigns, "assigns", "", "a JSON file of assigns, or - for stdin (default {})")
@@ -139,7 +152,7 @@ func introspectFlags(name, usageLine string, args []string, stdout, stderr io.Wr
 	if name == "render" {
 		rest = append(rest, assigns)
 	}
-	c := &devClient{base: strings.TrimRight(*url, "/"), http: &http.Client{Timeout: 10 * time.Second}}
+	c := &devClient{base: strings.TrimRight(*url, "/"), http: &http.Client{Timeout: 10 * time.Second}, token: *token}
 	data, human, err := run(c, rest)
 	var ae *apiError
 	switch {

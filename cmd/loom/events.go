@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -87,6 +88,7 @@ func followEvents(usageLine string, args []string, stdout, stderr io.Writer, set
 	fs := newCommand("events", usageLine, "print each event's JSON on a line of its own", stderr)
 	asJSON := fs.JSON
 	base := fs.String("url", appURL(), "the app's URL (default $LOOM_URL, or http://localhost:$PORT, or "+defaultURL+")")
+	token := fs.String("token", os.Getenv("LOOM_INSPECT_TOKEN"), "a deployed app's inspect token (default $LOOM_INSPECT_TOKEN)")
 	setup(fs.FlagSet)
 	if !fs.parse(args, 0, 0) {
 		return 2
@@ -100,7 +102,13 @@ func followEvents(usageLine string, args []string, stdout, stderr io.Writer, set
 	} else {
 		q += "&follow=1"
 	}
-	res, err := http.Get(strings.TrimRight(*base, "/") + "/_loom/dev/events" + q)
+	req, err := http.NewRequest("GET", strings.TrimRight(*base, "/")+"/_loom/dev/events"+q, nil)
+	if err != nil {
+		fmt.Fprintf(stderr, "loom events: %v\n", err)
+		return 2
+	}
+	(&devClient{token: *token}).authorize(req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Fprintf(stderr, "loom events: nothing answered at %s (%v); start the app with `loom dev`, or pass --url\n", *base, err)
 		return 2
