@@ -421,6 +421,10 @@ func (d *devServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			pr.SetXForwarded()
 			pr.Out.Host = pr.In.Host
 			pr.Out.Header.Set(loom.DevTokenHeader, d.devToken())
+			// Without the browser's Accept-Encoding the transport asks
+			// for gzip itself and unzips the answer, so injectClient
+			// sees plain HTML.
+			pr.Out.Header.Del("Accept-Encoding")
 		},
 		FlushInterval:  -1, // stream SSE immediately
 		ModifyResponse: injectClient,

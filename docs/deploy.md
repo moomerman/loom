@@ -106,8 +106,9 @@ rescued when its lease ends, and its entry is deleted an hour later.
 - Don't buffer `/_loom/stream`: it is Server-Sent Events. Loom sends
   `X-Accel-Buffering: no` for nginx; give the proxy a read timeout over
   25s, the stream's ping interval.
-- Compress at the proxy (gzip or brotli) if you want it; Loom doesn't,
-  and must not have its event stream compressed in buffers.
+- Loom gzips its own responses (`live.md`), so the proxy needn't
+  compress; one that does leaves an encoded response alone. Don't let
+  it compress or buffer the event stream.
 - Point the balancer's health check at `GET /_loom/health`, and set
   `DrainDelay` to its interval.
 - Loom's rate limits (`loom.RateLimit`) see the client's address

@@ -132,6 +132,12 @@ In production:
   `Referrer-Policy: strict-origin-when-cross-origin` and, when
   `BaseURL` is https, `Strict-Transport-Security`. The manifest shows
   the policy.
+- Responses are gzipped for browsers that accept it: pages,
+  navigations, scripts, stylesheets, assets, JSON and any handler's
+  text, with `Vary: Accept-Encoding`. Bodies under 1 KB, types
+  compressed already (images, audio, woff2, archives), ranges, a
+  response that set its own `Content-Encoding`, and the event stream
+  go out as they are.
 - A failed page load shows a plain error page with the error's code,
   never the error; `app.ErrorPage(component, func(loom.PageError) A)`
   brands it, rendered in the failing route's root layout (the app's

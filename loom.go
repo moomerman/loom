@@ -435,8 +435,15 @@ func (a *App) Live(path string, page Page, tmpl render.Template, opts ...RouteOp
 	a.top.Live(path, page, tmpl, opts...)
 }
 
-// ServeHTTP serves the app's pages and the /_loom/ endpoints.
+// ServeHTTP serves the app's pages and the /_loom/ endpoints, gzipped
+// when worth it (see compress.go).
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	cw := compress(w, r)
+	a.serve(cw, r)
+	cw.close() // not deferred: a panicking handler's response is dropped, as net/http would
+}
+
+func (a *App) serve(w http.ResponseWriter, r *http.Request) {
 	a.reaper.Do(func() { go a.reap() })
 	a.trustForwarded(r)
 	a.securityHeaders(w, r)
