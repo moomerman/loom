@@ -108,7 +108,7 @@ docs/              the reference docs, embedded for `loom docs`; llms.txt lists 
 3. Transport is SSE down, POST up. No websockets.
 4. One goroutine per live page owns its assigns; panics restart it.
 5. Runtime is stdlib only, except pgx (the Postgres driver); test-only
-   deps are fine. Go 1.25+.
+   deps are fine. Go 1.26+.
 6. `client/loom.js` is hand-written, no build step, < 8 KB minified.
 7. Compile errors are excellent: file, line, column, excerpt, plain English.
 8. Sub-apps (`auth`, `jobsweb`, `devmail`) use only Loom's public API;

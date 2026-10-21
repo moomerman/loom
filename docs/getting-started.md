@@ -1,6 +1,6 @@
 # Getting started
 
-How to start a new Loom app, for a person or an agent. You need Go 1.25
+How to start a new Loom app, for a person or an agent. You need Go 1.26
 or later.
 
 ## Install and create
