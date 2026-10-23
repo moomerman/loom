@@ -118,5 +118,6 @@ func TestBucket(t *testing.T) {
 }
 ```
 
-Loom's own S3 tests run against MinIO when `LOOM_TEST_S3` is set, e.g.
-`http://minioadmin:minioadmin@localhost:9000/loom-test`.
+Loom's own S3 tests run against a fake S3 in memory, and against a real
+service when `LOOM_TEST_S3` is set, e.g.
+`http://minioadmin:minioadmin@localhost:9000/loom-test` for MinIO.

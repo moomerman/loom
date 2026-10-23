@@ -22,22 +22,25 @@ func TestDir(t *testing.T) {
 	storagetest.Run(t, func(t *testing.T) storage.Bucket { return storage.Dir(t.TempDir()) })
 }
 
-// s3FromEnv is the S3-compatible service the test environment names:
+// s3ForTest is the S3-compatible service to test against. The test
+// environment can name one:
 //
 //	LOOM_TEST_S3=http://minioadmin:minioadmin@localhost:9000/loom-test
 //
 // an endpoint, credentials and a bucket the tests may create, fill and
-// empty. Each test empties it first. Without it the S3 tests skip.
-func s3FromEnv(t *testing.T) storage.S3Config {
-	raw := os.Getenv("LOOM_TEST_S3")
-	if raw == "" {
-		t.Skip("set LOOM_TEST_S3=http://KEY:SECRET@host:port/bucket to test S3 (e.g. MinIO)")
+// empty. Each test empties it first. Without it, the tests run against
+// a fake S3 in memory (FakeS3), so they never skip.
+func s3ForTest(t *testing.T) storage.S3Config {
+	var cfg storage.S3Config
+	if raw := os.Getenv("LOOM_TEST_S3"); raw != "" {
+		scheme, rest, _ := strings.Cut(raw, "://")
+		creds, rest, _ := strings.Cut(rest, "@")
+		host, bucket, _ := strings.Cut(rest, "/")
+		key, secret, _ := strings.Cut(creds, ":")
+		cfg = storage.S3Config{Endpoint: scheme + "://" + host, Bucket: bucket, AccessKeyID: key, SecretAccessKey: secret}
+	} else {
+		cfg = storage.FakeS3(t)
 	}
-	scheme, rest, _ := strings.Cut(raw, "://")
-	creds, rest, _ := strings.Cut(rest, "@")
-	host, bucket, _ := strings.Cut(rest, "/")
-	key, secret, _ := strings.Cut(creds, ":")
-	cfg := storage.S3Config{Endpoint: scheme + "://" + host, Bucket: bucket, AccessKeyID: key, SecretAccessKey: secret}
 	if err := storage.CreateBucket(cfg); err != nil {
 		t.Fatalf("creating the test bucket: %v", err)
 	}
@@ -64,7 +67,7 @@ func emptyBucket(t *testing.T, b storage.Bucket) {
 }
 
 func TestS3(t *testing.T) {
-	cfg := s3FromEnv(t)
+	cfg := s3ForTest(t)
 	storagetest.Run(t, func(t *testing.T) storage.Bucket {
 		b := storage.S3(cfg)
 		emptyBucket(t, b)
@@ -74,7 +77,7 @@ func TestS3(t *testing.T) {
 }
 
 func TestS3Errors(t *testing.T) {
-	cfg := s3FromEnv(t)
+	cfg := s3ForTest(t)
 	ctx := context.Background()
 	code := func(err error) string {
 		var e *storage.Error

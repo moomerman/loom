@@ -44,7 +44,8 @@ ask:
   `loomtest_*` databases. Without the variable the Postgres tests skip.
 - `LOOM_TEST_S3=http://minioadmin:minioadmin@localhost:9000/loom-test go test ./storage`:
   the storage conformance suite on MinIO (or any S3-compatible service);
-  the bucket is created if missing. Without the variable the S3 tests skip.
+  the bucket is created if missing. Without the variable the S3 tests
+  run against a fake S3 in memory (`storage/fakes3_test.go`).
 - `cd e2e && LOOM_CHROME=/path/to/chrome go test ./...`: headless browser
   tests (a separate module, so Loom needs no chromedp).
 - `DATABASE_URL=postgres://... go run ./cmd/loom migrate --dir examples/todo/migrations`,
@@ -55,8 +56,8 @@ ask:
   ask it about itself.
 
 Before pushing, run what CI runs (`.github/workflows/ci.yml`): `go vet
-./...`, `gofmt -l .`, staticcheck, the tests with Postgres, S3 and
-`-race`, and the e2e tests.
+./...`, `gofmt -l .`, staticcheck, the tests with Postgres and `-race`,
+and the e2e tests.
 
 ## Layout
 

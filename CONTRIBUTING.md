@@ -10,8 +10,8 @@ anything bigger than a fix, open an issue first to agree the shape.
    a new error has a code, a fix and an entry in `docs/errors.md`; new
    CLI output has `--json`.
 3. Run what CI runs: `go vet ./...`, `gofmt -l .`, staticcheck and
-   `go test -race ./...`, ideally with `LOOM_TEST_DATABASE_URL` and
-   `LOOM_TEST_S3` set so nothing skips (AGENTS.md, "Commands").
+   `go test -race ./...`, ideally with `LOOM_TEST_DATABASE_URL` set so
+   nothing skips (AGENTS.md, "Commands").
 4. Open a pull request saying what changes for someone using Loom.
 
 By contributing you agree that your contribution is licensed under the
