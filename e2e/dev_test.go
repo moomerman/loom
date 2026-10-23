@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/chromedp/chromedp"
 )
@@ -81,31 +80,18 @@ func main() {
 	}()
 
 	hx := filepath.Join(dir, "templates/home.hx")
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate("http://"+addr),
 		waitJS(`document.querySelector("#msg") && document.querySelector("#msg").textContent === "Hello 0"`),
-		chromedp.ActionFunc(func(ctxt context.Context) error {
+		chromedp.Func(func(context.Context, *chromedp.Target) error {
 			return os.WriteFile(hx, []byte("component Home(n int)\n<p id=\"msg\">Bye {m}</p>\n"), 0o644)
 		}),
 		waitJS(`document.querySelector("#loom-dev-overlay") && document.querySelector("#loom-dev-overlay").textContent.includes("TC301")`),
-		chromedp.ActionFunc(func(ctxt context.Context) error {
+		chromedp.Func(func(context.Context, *chromedp.Target) error {
 			return os.WriteFile(hx, []byte("component Home(n int)\n<p id=\"msg\">Bye {n}</p>\n"), 0o644)
 		}),
-		// The page reloads during this wait, which interrupts evaluation,
-		// so poll with plain evaluations and retry on errors.
-		chromedp.ActionFunc(func(ctxt context.Context) error {
-			for {
-				var ok bool
-				err := chromedp.Evaluate(`!!(document.querySelector("#msg") && document.querySelector("#msg").textContent === "Bye 0" && !document.querySelector("#loom-dev-overlay"))`, &ok).Do(ctxt)
-				if err == nil && ok {
-					return nil
-				}
-				if ctxt.Err() != nil {
-					return ctxt.Err()
-				}
-				time.Sleep(50 * time.Millisecond)
-			}
-		}),
+		// The page reloads during this wait; waitJS retries across it.
+		waitJS(`document.querySelector("#msg") && document.querySelector("#msg").textContent === "Bye 0" && !document.querySelector("#loom-dev-overlay")`),
 	)
 	if err != nil {
 		t.Fatal(err)

@@ -1,9 +1,11 @@
 package e2e
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/chromedp"
 )
@@ -16,15 +18,20 @@ func TestDarkMode(t *testing.T) {
 	ctx := browser(t)
 
 	const bg = `getComputedStyle(document.body).backgroundColor`
-	scheme := func(dark bool) chromedp.Action {
+	scheme := func(dark bool) action {
 		v := "light"
 		if dark {
 			v = "dark"
 		}
-		return emulation.SetEmulatedMedia().WithFeatures([]*emulation.MediaFeature{{Name: "prefers-color-scheme", Value: v}})
+		return chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
+			_, err := cdp.Call(ctx, t, emulation.SetEmulatedMedia, emulation.SetEmulatedMediaParams{
+				Features: []*emulation.MediaFeature{{Name: "prefers-color-scheme", Value: v}},
+			})
+			return err
+		})
 	}
 	var light, dark, forcedLight, forcedDark, nav string
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		scheme(false),
 		chromedp.Navigate(srv.URL),
 		waitFor(".todoapp"),

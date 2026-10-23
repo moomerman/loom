@@ -57,18 +57,18 @@ func TestBehaviors(t *testing.T) {
 	}
 	const order = `[...document.querySelectorAll("li")].map(li => li.dataset.loomKey + ":" + li.dataset.mounted).join(" ")`
 	var log, hint, live string
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(srv.URL),
 		waitFor(`#loom-root.loom-connected li[data-mounted="3"]`),
 		eval(`document.querySelector("[role=note]").title`, &hint),
 		eval(`document.querySelector("[role=status]").getAttribute("aria-live")`, &live),
-		eval(`window.one = document.querySelector('li[data-loom-key="1"]'); true`, nil),
-		eval(key("ArrowDown"), nil),
+		js(`window.one = document.querySelector('li[data-loom-key="1"]'); true`),
+		js(key("ArrowDown")),
 		waitJS(order+` === "2:2 1:1 3:3"`),
-		eval(key("ArrowDown"), nil),
+		js(key("ArrowDown")),
 		waitJS(order+` === "2:2 3:3 1:1"`),
 		waitJS(`document.querySelector('li[data-loom-key="1"]') === window.one`),
-		eval(key("Escape"), nil),
+		js(key("Escape")),
 		waitJS(order+` === "2:2 3:3"`),
 		eval(`window.itemLog.join(", ")`, &log),
 	)

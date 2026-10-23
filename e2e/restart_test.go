@@ -61,8 +61,8 @@ func (s *server) stop() {
 }
 
 // do runs f as a chromedp action.
-func do(f func()) chromedp.Action {
-	return chromedp.ActionFunc(func(context.Context) error { f(); return nil })
+func do(f func()) action {
+	return chromedp.Func(func(context.Context, *chromedp.Target) error { f(); return nil })
 }
 
 // A todo ticked while the server is down is saved once it is back: the
@@ -74,7 +74,7 @@ func TestRestartMidEvent(t *testing.T) {
 	logConsole(t, ctx)
 	first := `li[data-loom-key="00000000-0000-0000-0000-000000000001"]`
 	var sid, after string
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(s.url()),
 		waitFor("#loom-root.loom-connected .todo-list li"),
 		eval(`document.getElementById("loom-root").dataset.sid`, &sid),
@@ -104,7 +104,7 @@ func TestRestartMidForm(t *testing.T) {
 	ctx := browser(t)
 	logConsole(t, ctx)
 	var sid, typed string
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(s.url()),
 		waitFor("#loom-root.loom-connected .todo-list li"),
 		eval(`window.oldSID = document.getElementById("loom-root").dataset.sid`, &sid),
@@ -142,7 +142,7 @@ func TestRestartMovesStaleEvent(t *testing.T) {
 	}
 	clear := `button[on\:click="clear_completed"]`
 	var sid string
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(s.url()),
 		waitFor("#loom-root.loom-connected "+clear),
 		eval(`window.oldSID = document.getElementById("loom-root").dataset.sid`, &sid),

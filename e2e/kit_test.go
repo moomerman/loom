@@ -101,7 +101,7 @@ func TestKitDropdown(t *testing.T) {
 	url := kitApp(t)
 	ctx := browser(t)
 	const active = `document.activeElement.dataset.value`
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(url+"/dropdown"),
 		waitFor(`#loom-root.loom-connected [role=listbox][hidden]`),
 		click(".trigger"),
@@ -125,7 +125,7 @@ func TestKitDropdown(t *testing.T) {
 func TestKitDialog(t *testing.T) {
 	url := kitApp(t)
 	ctx := browser(t)
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(url+"/dialog"),
 		waitFor(`#loom-root.loom-connected [role=dialog]`),
 		waitJS(`document.activeElement.classList.contains("close")`),
@@ -147,7 +147,7 @@ func TestKitTabs(t *testing.T) {
 	url := kitApp(t)
 	ctx := browser(t)
 	const selected = `document.querySelector("[aria-selected=true]").textContent`
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(url+"/tabs"),
 		waitFor(`#loom-root.loom-connected [role=tab][aria-selected=true]`),
 		click(`[role=tab][aria-selected=true]`),

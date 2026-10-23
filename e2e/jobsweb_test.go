@@ -26,7 +26,7 @@ func TestJobsDashboard(t *testing.T) {
 	var before string
 	err := run(ctx,
 		chromedp.Navigate(srv.URL+"/about"),
-		settled(`document.cookie = "user=Admin; path=/"; true`, nil),
+		settled(js(`document.cookie = "user=Admin; path=/"; true`)),
 		chromedp.Navigate(srv.URL+"/admin/jobs"),
 		// The page may load twice (a session the server ended reloads it), so
 		// these steps wait across loads.
@@ -35,13 +35,14 @@ func TestJobsDashboard(t *testing.T) {
 		// leadership, with the leader badge: a heartbeat re-renders it.
 		waitFor(`#loom-root.loom-connected tr.node-row.up .badge`),
 		chromedp.Sleep(200*time.Millisecond), // let a startup prune finish
-		settled(done+`.textContent`, &before),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+		settled(eval(done+`.textContent`, &before)),
+		chromedp.Func(func(ctx context.Context, _ *chromedp.Target) error {
 			_, err := app.JobRunner().EnqueueJSON(ctx, "todo.PruneCompleted", []byte(`{}`))
 			return err
 		}),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			return waitJS(done + `.textContent === "` + next(before) + `"`).Do(ctx)
+		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
+			_, err := waitJS(done+`.textContent === "`+next(before)+`"`)(ctx, t)
+			return err
 		}),
 		chromedp.Navigate(srv.URL+"/admin/jobs/jobs"),
 		waitFor(`#loom-root.loom-connected .jobs .state.completed`),
@@ -51,12 +52,12 @@ func TestJobsDashboard(t *testing.T) {
 	}
 }
 
-// settled evaluates js, trying again while the page is between documents
+// settled runs a, trying again while the page is between documents
 // (Chrome answers "Cannot find context with specified id" then).
-func settled(js string, out any) chromedp.Action {
-	return chromedp.ActionFunc(func(ctx context.Context) error {
+func settled(a action) action {
+	return chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 		for {
-			err := chromedp.Evaluate(js, out).Do(ctx)
+			_, err := a(ctx, t)
 			if err == nil {
 				return nil
 			}

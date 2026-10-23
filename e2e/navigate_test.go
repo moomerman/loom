@@ -26,14 +26,14 @@ func TestLiveNavigation(t *testing.T) {
 
 	kept := `window.kept === "yes"`
 	var title, maxWidth string
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(srv.URL),
 		waitFor("#loom-root.loom-connected .todo-list li"),
-		eval(`window.kept = "yes"; true`, nil),
+		js(`window.kept = "yes"; true`),
 
 		// The filter link is to the same route, and the page has
 		// HandleParams, so it patches the page, keeping its session.
-		eval(`window.sid = document.getElementById("loom-root").dataset.sid; true`, nil),
+		js(`window.sid = document.getElementById("loom-root").dataset.sid; true`),
 		click(`.filters a[href="/?filter=active"]`),
 		waitJS(`location.search === "?filter=active" && document.querySelector('.filters a[href="/?filter=active"]').classList.contains("current")`),
 		waitJS(kept+` && document.getElementById("loom-root").dataset.sid === window.sid`),
@@ -59,9 +59,9 @@ func TestLiveNavigation(t *testing.T) {
 	}
 
 	var n int
-	err = chromedp.Run(ctx,
+	err = chromedp.Do(ctx,
 		// Back to the list.
-		eval(`history.back(); true`, nil),
+		js(`history.back(); true`),
 		waitJS(`location.search === "?filter=active" && document.querySelector(".todo-list") !== null`),
 		waitJS(kept),
 		typeInto(".new-todo input", "Walk\n"),
@@ -76,8 +76,8 @@ func TestLiveNavigation(t *testing.T) {
 	}
 
 	// Another root layout: an ordinary page load.
-	err = chromedp.Run(ctx,
-		eval(`const a = document.createElement("a"); a.href = "/admin/jobs"; document.body.append(a); a.click(); true`, nil),
+	err = chromedp.Do(ctx,
+		js(`const a = document.createElement("a"); a.href = "/admin/jobs"; document.body.append(a); a.click(); true`),
 		waitJS(`location.pathname === "/admin/jobs" && window.kept === undefined`),
 	)
 	if err != nil {
@@ -109,10 +109,10 @@ func TestNavigateFromHandle(t *testing.T) {
 	ctx := browser(t)
 	logConsole(t, ctx)
 
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(srv.URL),
 		waitJS(`document.getElementById("loom-root").classList.contains("loom-connected")`),
-		eval(`window.kept = "yes"; document.querySelector('[on\\:click="go"]').click(); true`, nil),
+		js(`window.kept = "yes"; document.querySelector('[on\\:click="go"]').click(); true`),
 		waitJS(`location.pathname === "/sort" && document.querySelectorAll("li[data-mounted]").length === 3`),
 		waitJS(`window.kept === "yes"`),
 	)

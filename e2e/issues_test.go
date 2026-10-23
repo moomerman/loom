@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chromedp/cdproto/input"
 	"github.com/chromedp/chromedp"
 	"github.com/chromedp/chromedp/kb"
 	"github.com/moomerman/loom"
@@ -38,7 +37,7 @@ func TestIssuesInBrowser(t *testing.T) {
 
 		// G then 2 goes to the second team in the sidebar, Engineering,
 		// once the hotkeys behavior has loaded.
-		untilJS(chromedp.Tasks{chromedp.KeyEvent("g"), chromedp.KeyEvent("2")}, `location.pathname === "/team/ENG"`),
+		untilJS(chromedp.Steps(chromedp.KeyEvent("g"), chromedp.KeyEvent("2")), `location.pathname === "/team/ENG"`),
 		waitJS(`location.pathname === "/team/ENG" && document.querySelector("#loom-root.loom-connected .list a[data-row]") !== null`),
 
 		// J moves through the rows; Enter opens the focused one. The first
@@ -62,7 +61,7 @@ func TestIssuesInBrowser(t *testing.T) {
 		chromedp.KeyEvent("c"),
 		waitJS(`document.activeElement === document.querySelector("form[role=dialog] input[name=title]")`),
 		chromedp.KeyEvent("Typed in a browser"),
-		chromedp.KeyEvent("\r", chromedp.KeyModifiers(input.ModifierCtrl)),
+		chromedp.KeyEvent("\r", chromedp.KeyModifiers(chromedp.ModifierCtrl)),
 		waitJS(`document.querySelector("form[role=dialog]") === null`),
 		waitFor(".toast"),
 		text(".toast", &toast),
@@ -79,24 +78,23 @@ func TestIssuesInBrowser(t *testing.T) {
 
 // signInAsAda signs in on the auth sub-app's sign-in page, where a
 // signed-in page sends the browser, with the example's demo password.
-func signInAsAda() chromedp.Action {
-	return chromedp.Tasks{
+func signInAsAda() action {
+	return chromedp.Steps(
 		waitFor("#loom-root.loom-connected input[name=email]"),
 		chromedp.SendKeys("input[name=email]", "ada@example.com"),
 		chromedp.SendKeys("input[name=password]", "loom-issues"),
 		click("button[type=submit]"),
-	}
+	)
 }
 
 // untilJS repeats an action until the JavaScript expression is true.
-func untilJS(a chromedp.Action, js string) chromedp.Action {
-	return chromedp.ActionFunc(func(ctx context.Context) error {
+func untilJS(a action, js string) action {
+	return chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 		for {
-			if err := a.Do(ctx); err != nil {
+			if _, err := a(ctx, t); err != nil {
 				return err
 			}
-			var ok bool
-			if err := chromedp.Evaluate(js, &ok).Do(ctx); err == nil && ok {
+			if ok, err := chromedp.Evaluate[bool](js)(ctx, t); err == nil && ok {
 				return nil
 			}
 			select {
@@ -109,9 +107,9 @@ func untilJS(a chromedp.Action, js string) chromedp.Action {
 }
 
 // run runs the actions in order, saying which one failed.
-func run(ctx context.Context, actions ...chromedp.Action) error {
+func run(ctx context.Context, actions ...action) error {
 	for i, a := range actions {
-		if err := chromedp.Run(ctx, a); err != nil {
+		if err := chromedp.Do(ctx, a); err != nil {
 			return fmt.Errorf("step %d: %w", i+1, err)
 		}
 	}

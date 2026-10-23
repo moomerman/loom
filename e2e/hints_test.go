@@ -44,7 +44,7 @@ func TestOptimisticHints(t *testing.T) {
 	save, remove := `button.primary`, `button.danger`
 	var during, after string
 	state := `[` + quote(save) + `, ` + quote(remove) + `].map(s => { const b = document.querySelector(s); return b.className + (b.disabled ? " disabled" : ""); }).join(" | ")`
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(srv.URL),
 		waitFor("#loom-root.loom-connected "+save),
 		click(save),
@@ -73,7 +73,7 @@ func TestRateLimitedEvent(t *testing.T) {
 	t.Cleanup(srv.Close)
 	ctx := browser(t)
 	var limited bool
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(srv.URL),
 		waitFor("#loom-root.loom-connected button.primary"),
 		click("button.primary"),
@@ -83,7 +83,7 @@ func TestRateLimitedEvent(t *testing.T) {
 	if err != nil || limited {
 		t.Fatalf("after the first save: limited %v, %v", limited, err)
 	}
-	err = chromedp.Run(ctx,
+	err = chromedp.Do(ctx,
 		click("button.primary"),
 		waitJS(`document.documentElement.classList.contains("loom-limited")`),
 	)

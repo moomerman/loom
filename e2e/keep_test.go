@@ -83,7 +83,7 @@ func TestKeepAcrossRestart(t *testing.T) {
 	ctx := browser(t)
 	logConsole(t, ctx)
 	var sid, count, toast string
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate("http://"+s.addr),
 		waitFor("#loom-root.loom-connected button.bump"),
 		click("span.toast"),

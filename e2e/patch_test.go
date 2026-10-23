@@ -38,7 +38,7 @@ func TestURLPatchInBrowser(t *testing.T) {
 		waitJS(`document.querySelector("#loom-root.loom-connected .list") !== null`),
 		chromedp.Navigate(srv.URL+"/team/ENG"),
 		waitJS(`location.pathname === "/team/ENG" && document.querySelector("#loom-root.loom-connected .list a[data-row]") !== null`),
-		eval(`window.kept = "yes"; window.sid = document.getElementById("loom-root").dataset.sid; true`, nil),
+		js(`window.kept = "yes"; window.sid = document.getElementById("loom-root").dataset.sid; true`),
 
 		// A tab is a link to the same route: it patches.
 		click(`[role=tab][href="/team/ENG?view=active"]`),
@@ -53,12 +53,12 @@ func TestURLPatchInBrowser(t *testing.T) {
 		waitJS(same),
 
 		// Back undoes the filter, then the tab, still in the same session.
-		eval(`history.back(); true`, nil),
+		js(`history.back(); true`),
 		waitJS(`location.search === "?view=active" && `+rows+` === 11`),
-		eval(`history.back(); true`, nil),
+		js(`history.back(); true`),
 		waitJS(`location.search === "" && `+rows+` === 22`),
 		waitJS(same),
-		eval(`history.forward(); true`, nil),
+		js(`history.forward(); true`),
 		waitJS(`location.search === "?view=active" && `+rows+` === 11`),
 
 		// A search replaces its history entry as it goes.
@@ -69,16 +69,16 @@ func TestURLPatchInBrowser(t *testing.T) {
 		waitJS(same),
 
 		// The URL holds the state: a reload shows the same list.
-		eval(`location.reload(); true`, nil),
+		js(`location.reload(); true`),
 		waitJS(`window.kept === undefined && document.querySelector("#loom-root.loom-connected .list") !== null`),
 		waitJS(`location.search === "?q=notify&view=active" && `+rows+` === 1 && document.querySelector("input.search").value === "notify"`),
 
 		// Another team mounts afresh, in a new session, without a load.
-		eval(`window.kept = "yes"; window.sid = document.getElementById("loom-root").dataset.sid; true`, nil),
+		js(`window.kept = "yes"; window.sid = document.getElementById("loom-root").dataset.sid; true`),
 		click(`nav[aria-label=Teams] a[href="/team/DES"]`),
 		waitJS(`location.pathname === "/team/DES" && location.search === "" && `+rows+` === 8`),
 		waitJS(`window.kept === "yes" && document.querySelector("#loom-root.loom-connected").dataset.sid !== window.sid`),
-		eval(`history.back(); true`, nil),
+		js(`history.back(); true`),
 		waitJS(`location.pathname === "/team/ENG" && location.search === "?q=notify&view=active" && `+rows+` === 1`),
 	)
 	if err != nil {

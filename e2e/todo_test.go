@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	cdpruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/moomerman/loom"
 	"github.com/moomerman/loom/examples/todo"
@@ -57,9 +56,7 @@ func browser(t *testing.T, flags ...chromedp.ExecAllocatorOption) context.Contex
 	if path == "" {
 		t.Skip("no Chrome found; set LOOM_CHROME to run the browser tests")
 	}
-	// A cold Chrome on a fresh CI runner can take longer than chromedp's
-	// default 20s to print its DevTools URL.
-	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(path), chromedp.NoSandbox, chromedp.WSURLReadTimeout(time.Minute))
+	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(path), chromedp.NoSandbox)
 	opts = append(opts, flags...)
 	ctx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	t.Cleanup(cancel)
@@ -68,7 +65,7 @@ func browser(t *testing.T, flags ...chromedp.ExecAllocatorOption) context.Contex
 	ctx, cancel = chromedp.NewContext(ctx, chromedp.WithErrorf(func(string, ...any) {}))
 	t.Cleanup(cancel)
 	// Start Chrome now, so the test's own timeout below doesn't include it.
-	if err := chromedp.Run(ctx); err != nil {
+	if err := chromedp.Do(ctx); err != nil {
 		t.Fatalf("starting Chrome: %v", err)
 	}
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
@@ -76,18 +73,32 @@ func browser(t *testing.T, flags ...chromedp.ExecAllocatorOption) context.Contex
 	return ctx
 }
 
+// action is a step that returns nothing: what chromedp.Do runs.
+type action = chromedp.Action[chromedp.Void]
+
+// js runs JavaScript for its effect.
+func js(expr string) action { return chromedp.Evaluate[chromedp.Void](expr) }
+
 // eval runs JavaScript and stores its result in out.
-func eval(js string, out any) chromedp.Action { return chromedp.Evaluate(js, out) }
+func eval[T any](js string, out *T) action {
+	return chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
+		v, err := chromedp.Evaluate[T](js)(ctx, t)
+		if err != nil {
+			return err
+		}
+		*out = v
+		return nil
+	})
+}
 
 // waitJS polls until the JavaScript expression is true, across page
 // loads too. It polls from Go rather than with chromedp.Poll, whose
 // promise can be left waiting in a page that is still starting (one
 // that loads heavy scripts as it connects) or that navigates away.
-func waitJS(js string) chromedp.Action {
-	return chromedp.ActionFunc(func(ctx context.Context) error {
+func waitJS(js string) action {
+	return chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 		for {
-			var ok bool
-			if err := chromedp.Evaluate(`!!(`+js+`)`, &ok).Do(ctx); err == nil && ok {
+			if ok, err := chromedp.Evaluate[bool](`!!(`+js+`)`)(ctx, t); err == nil && ok {
 				return nil
 			}
 			select {
@@ -104,32 +115,33 @@ func waitJS(js string) chromedp.Action {
 // events that recent Chrome versions encode differently.
 
 // waitFor waits until an element matches the selector.
-func waitFor(sel string) chromedp.Action {
+func waitFor(sel string) action {
 	return waitJS(`document.querySelector(` + quote(sel) + `) !== null`)
 }
 
 // click clicks the middle of the element matching the selector.
-func click(sel string) chromedp.Action {
-	return chromedp.ActionFunc(func(ctx context.Context) error {
-		var xy []float64
+func click(sel string) action {
+	return chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 		js := `(() => { const r = document.querySelector(` + quote(sel) + `).getBoundingClientRect(); return [r.x + r.width/2, r.y + r.height/2]; })()`
-		if err := chromedp.Evaluate(js, &xy).Do(ctx); err != nil {
+		xy, err := chromedp.Evaluate[[]float64](js)(ctx, t)
+		if err != nil {
 			return err
 		}
-		return chromedp.MouseClickXY(xy[0], xy[1]).Do(ctx)
+		_, err = chromedp.MouseClickXY(xy[0], xy[1])(ctx, t)
+		return err
 	})
 }
 
 // typeInto focuses the element and types the text, as keystrokes.
-func typeInto(sel, text string) chromedp.Action {
-	return chromedp.Tasks{
+func typeInto(sel, text string) action {
+	return chromedp.Steps(
 		click(sel),
 		chromedp.KeyEvent(text),
-	}
+	)
 }
 
 // text returns the text content of the element matching the selector.
-func text(sel string, out *string) chromedp.Action {
+func text(sel string, out *string) action {
 	return eval(`document.querySelector(`+quote(sel)+`).textContent`, out)
 }
 
@@ -145,11 +157,11 @@ func TestTodoInBrowser(t *testing.T) {
 
 	var titles string
 	var focused, sameNode bool
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(srv.URL),
 		waitFor("#loom-root.loom-connected .todo-list li"),
 		// Tag the first item's element, to check it survives updates.
-		eval(`document.querySelector('li[data-loom-key="00000000-0000-0000-0000-000000000001"]').loomTag = "kept"; true`, nil),
+		js(`document.querySelector('li[data-loom-key="00000000-0000-0000-0000-000000000001"]').loomTag = "kept"; true`),
 
 		// Add.
 		typeInto(".new-todo input", "Buy milk\n"),
@@ -168,7 +180,7 @@ func TestTodoInBrowser(t *testing.T) {
 	}
 
 	var count string
-	err = chromedp.Run(ctx,
+	err = chromedp.Do(ctx,
 		// Toggle.
 		click(`li[data-loom-key="00000000-0000-0000-0000-000000000001"] input[type=checkbox]`),
 		waitJS(`document.querySelector('li[data-loom-key="00000000-0000-0000-0000-000000000001"]').classList.contains("done")`),
@@ -185,7 +197,7 @@ func TestTodoInBrowser(t *testing.T) {
 		t.Error("toggling replaced the item's element; keyed items should keep their DOM nodes")
 	}
 
-	err = chromedp.Run(ctx,
+	err = chromedp.Do(ctx,
 		// Delete the middle item.
 		click(`li[data-loom-key="00000000-0000-0000-0000-000000000002"] button`),
 		waitJS(`document.querySelectorAll(".todo-list li").length === 2`),
@@ -207,7 +219,7 @@ func TestTodoInBrowser(t *testing.T) {
 	}
 
 	// Filtering, by URL, hides done items.
-	err = chromedp.Run(ctx,
+	err = chromedp.Do(ctx,
 		click(`.filters a[href="/?filter=active"]`),
 		waitJS(`location.search === "?filter=active" && document.querySelectorAll(".todo-list li").length === 1`),
 	)
@@ -217,18 +229,25 @@ func TestTodoInBrowser(t *testing.T) {
 }
 
 // logConsole logs the page's console and exceptions, to see why a test
-// failed if it does.
+// failed if it does. It stops logging before the test ends.
 func logConsole(t *testing.T, ctx context.Context) {
-	chromedp.ListenTarget(ctx, func(ev any) {
-		switch e := ev.(type) {
-		case *cdpruntime.EventConsoleAPICalled:
-			for _, a := range e.Args {
-				t.Logf("console: %s %s", a.Value, a.Description)
+	ctx, cancel := context.WithCancel(ctx)
+	messages := chromedp.Console(ctx)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for m, err := range messages {
+			if err != nil {
+				return
 			}
-		case *cdpruntime.EventExceptionThrown:
-			t.Logf("exception: %s", e.ExceptionDetails.Error())
+			if m.IsException() {
+				t.Logf("exception: %s", m)
+			} else {
+				t.Logf("console: %s", m)
+			}
 		}
-	})
+	}()
+	t.Cleanup(func() { cancel(); <-done })
 }
 
 // TestWatchInBrowser opens the list in two tabs: a change made in one
@@ -242,24 +261,24 @@ func TestWatchInBrowser(t *testing.T) {
 	logConsole(t, one)
 	two, cancel := chromedp.NewContext(one)
 	t.Cleanup(cancel)
-	open := chromedp.Tasks{chromedp.Navigate(srv.URL), waitFor("#loom-root.loom-connected .todo-list li")}
-	if err := chromedp.Run(one, open); err != nil {
+	open := chromedp.Steps(chromedp.Navigate(srv.URL), waitFor("#loom-root.loom-connected .todo-list li"))
+	if err := chromedp.Do(one, open); err != nil {
 		t.Fatal(err)
 	}
-	if err := chromedp.Run(two, open); err != nil {
+	if err := chromedp.Do(two, open); err != nil {
 		t.Fatal(err)
 	}
-	if err := chromedp.Run(one, typeInto(".new-todo input", "Buy milk\n")); err != nil {
+	if err := chromedp.Do(one, typeInto(".new-todo input", "Buy milk\n")); err != nil {
 		t.Fatal(err)
 	}
-	if err := chromedp.Run(two, waitJS(`document.querySelectorAll(".todo-list li").length === 3`)); err != nil {
+	if err := chromedp.Do(two, waitJS(`document.querySelectorAll(".todo-list li").length === 3`)); err != nil {
 		t.Fatal("the other tab didn't show the new todo:", err)
 	}
 	if _, err := db.Exec(context.Background(), `UPDATE todos SET title = 'Try Loom today' WHERE title = 'Try Loom'`); err != nil {
 		t.Fatal(err)
 	}
 	for _, ctx := range []context.Context{one, two} {
-		if err := chromedp.Run(ctx, waitJS(`document.querySelector(".todo-list li label").textContent.includes("Try Loom today")`)); err != nil {
+		if err := chromedp.Do(ctx, waitJS(`document.querySelector(".todo-list li label").textContent.includes("Try Loom today")`)); err != nil {
 			t.Fatal("a change in the database didn't show:", err)
 		}
 	}
@@ -287,14 +306,11 @@ func TestReconnect(t *testing.T) {
 	t.Cleanup(srv.Close)
 	ctx := browser(t)
 
-	err := chromedp.Run(ctx,
+	err := chromedp.Do(ctx,
 		chromedp.Navigate(srv.URL),
 		waitFor("#loom-root.loom-connected button"),
 		// Drop every stream connection; the client reconnects after a second.
-		chromedp.ActionFunc(func(context.Context) error {
-			srv.CloseClientConnections()
-			return nil
-		}),
+		do(srv.CloseClientConnections),
 		click("button"),
 		waitJS(`document.querySelector("button").textContent === "Clicked 1"`),
 	)
