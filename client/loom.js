@@ -11,9 +11,8 @@
   "use strict";
   var root = document.getElementById("loom-root");
   if (!root) return;
-  var sid = root.getAttribute("data-sid");
-  var init = JSON.parse(document.getElementById("loom-tree").textContent);
-  var tree = init.tree, version = init.v, stream, retry, wait = 1e3, leaving, path = location.pathname;
+  var sid = root.getAttribute("data-sid"), init = JSON.parse(document.getElementById("loom-tree").textContent),
+    tree = init.tree, version = init.v, stream, retry, wait = 1e3, leaving, path = location.pathname;
 
   // --- Render trees ---
 
@@ -57,6 +56,7 @@
     var t = document.createElement("template");
     t.innerHTML = html(tree);
     children(root, t.content);
+    opened();
     // The morph undid pending state; keep it where the ack's diff hasn't
     // arrived yet.
     pend = pend.filter(function (h) { return !(h.v <= version) && h.el.isConnected; });
@@ -104,20 +104,40 @@
     }
   }
 
+  // Form state (a control's value, checked or selected option, a
+  // details' open) lives in properties, which stop following attributes
+  // once the user interacts. The user's state stays unless the server's
+  // render of it changed: f's attributes are still the last render's.
   function morph(f, t) {
     if (f.nodeType !== 1) {
       if (f.nodeValue !== t.nodeValue) f.nodeValue = t.nodeValue;
       return;
     }
-    attrs(f, t);
-    // Form state lives in properties, which stop following attributes
-    // once the user interacts. Don't overwrite what the user is typing.
-    if (f.tagName === "INPUT") {
-      f.checked = t.hasAttribute("checked");
-      if (f !== document.activeElement && f.type !== "checkbox" && f.type !== "radio") f.value = t.getAttribute("value") || "";
+    var c = /^(INPUT|SELECT|TEXTAREA)$/.test(f.tagName) && state(f) !== state(t), o = t.open;
+    // Toggling a details sets its open attribute, so the last render's
+    // is kept aside (opened).
+    if (f.tagName === "DETAILS") {
+      if (o === f.loomOpen) t.open = f.open;
+      f.loomOpen = o;
     }
-    if (f.tagName === "TEXTAREA" && f !== document.activeElement) f.value = t.textContent;
+    attrs(f, t);
     children(f, t);
+    // The server's render changed: it wins, except over what the user is
+    // typing.
+    if (c) {
+      if (f.options) [].forEach.call(f.options, function (o) { o.selected = o.defaultSelected; });
+      else if (/checkbox|radio/.test(f.type)) f.checked = f.defaultChecked;
+      else if (f !== document.activeElement) f.value = f.defaultValue;
+    }
+  }
+
+  // state is the server's render of a control's state: its value and
+  // checked attributes, or a select's selected option.
+  function state(n) { return n.options ? (n.querySelector("[selected]") || {}).value : n.defaultValue + n.defaultChecked; }
+
+  // opened notes the open of each details the server just rendered.
+  function opened() {
+    root.querySelectorAll("details").forEach(function (d) { if (d.loomOpen == null) d.loomOpen = d.open; });
   }
 
   // --- Events ---
@@ -184,7 +204,7 @@
     ended.forEach(function (h) {
       var n = t.content, p = [], el = h.el;
       if (!el.isConnected) return;
-      for (; el && el !== root; el = el.parentNode) p.unshift(Array.prototype.indexOf.call(el.parentNode.childNodes, el));
+      for (; el && el !== root; el = el.parentNode) p.unshift([].indexOf.call(el.parentNode.childNodes, el));
       p.forEach(function (i) { n = n && n.childNodes[i]; });
       if (n && same(n, h.el)) attrs(h.el, n);
     });
@@ -198,7 +218,7 @@
     var p = {}, i, a;
     if (el.tagName === "FORM") new FormData(el).forEach(function (v, k) { p[k] = String(v); });
     if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) p.value = el.value;
-    if (el.type === "checkbox" || el.type === "radio") p.checked = String(el.checked);
+    if (/checkbox|radio/.test(el.type)) p.checked = String(el.checked);
     if (e.key) p.key = e.key;
     for (i = 0; i < el.attributes.length; i++) {
       a = el.attributes[i];
@@ -398,6 +418,7 @@
     flush();
   };
 
+  opened();
   connect();
   flush();
 })();

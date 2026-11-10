@@ -328,9 +328,11 @@ func (p *ComposerPage) create(c *loom.Ctx, payload loom.Payload) {
 - A remount uses the same swap. When the server has lost the page's
   session (it restarted, or the session expired), the browser fetches
   the same URL leaving no session (`X-Loom-Navigate: -`) and swaps in a
-  new one, keeping the document and the user's input: it restores each
-  named form field by name and sends the form's `on:change`, if it has
-  one, so the new session sees it, and sends back the state the page
+  new one, keeping the document and the user's input: each named form
+  field holding input the server hadn't rendered gets it back (the same
+  field: its `:key`ed item, name and place), and each form restored
+  sends its `on:change`, if it has one, so the new session sees it.
+  With no such input, nothing is sent. It also sends back the state the page
   and its live layout keep (`Keep`, `live.md`). If the root layout changed (a deploy
   edited it) the page reloads instead.
   `loom dev` remounts the same way after a rebuild.

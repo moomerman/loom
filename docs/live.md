@@ -182,9 +182,11 @@ errors, keep a `form.Form` of a typed input struct and bind the inputs
 to its fields; see `forms.md`.
 
 The DOM is patched in place. Elements in a `:for` with a `:key` keep their
-identity across updates, and an input that has focus keeps what the user
-typed. The root element has class `loom-connected` while the page is
-connected to the server.
+identity across updates, and form state the user set (a field's text, a
+checkbox, a select's option, an open `<details>`) stays until the
+server renders that control differently; then the server's wins, except
+over the text of the field that has focus. The root element has class
+`loom-connected` while the page is connected to the server.
 
 ### Pending events and hints
 

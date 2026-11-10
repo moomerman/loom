@@ -84,7 +84,9 @@
       // Another root layout, scripts or wire protocol: load the page.
       var t = JSON.parse(tree.textContent), o = JSON.parse(old.textContent);
       if (t.root !== o.root || t.p !== o.p) return location.reload();
-      controls().forEach(function (el) { kept[key(el)] = value(el); });
+      // Only input the server doesn't have: a control whose state isn't
+      // what the server rendered for it.
+      controls().forEach(function (c) { if (value(c[1]) !== rendered(c[1])) kept[c[0]] = value(c[1]); });
     }
     doc.querySelectorAll("link[rel=stylesheet]").forEach(function (l) {
       var href = l.getAttribute("href");
@@ -110,11 +112,12 @@
       head.querySelectorAll("[data-live-meta]").forEach(function (m) { m.remove(); });
       doc.querySelectorAll("[data-live-meta]").forEach(function (m) { head.appendChild(document.importNode(m, true)); });
       root.loomSwap(JSON.parse(tree.textContent));
-      // A remount restores the form input, telling each form that has
-      // an on:change, so the new session sees it too.
-      if (remount) controls().forEach(function (el) {
-        var v = kept[key(el)];
-        if (v === undefined || v === value(el)) return;
+      // A remount restores that input where the new render doesn't have
+      // it, telling each form it restored that has an on:change, so the
+      // new session sees it too.
+      if (remount) controls().forEach(function (c) {
+        var v = kept[c[0]], el = c[1];
+        if (v === undefined || v === rendered(el)) return;
         /checkbox|radio/.test(el.type) ? (el.checked = v) : (el.value = v);
         if (el.form && forms.indexOf(el.form) < 0) forms.push(el.form);
       });
@@ -137,14 +140,29 @@
     });
   }
 
-  // controls are the form fields whose input a remount keeps.
+  // controls are the form fields whose input a remount keeps, each with
+  // a key naming it on the page: the data-loom-key of the item of a
+  // :for it is in (if any), its name (and value, for a checkbox or
+  // radio), and its place among the fields of that item, or of no item,
+  // with that name. Not the name alone: each row of a list may have a
+  // form with the same fields.
   function controls() {
+    var seen = {};
     return Array.prototype.filter.call(root.querySelectorAll("input[name],select[name],textarea[name]"), function (el) {
       return !/hidden|file|password|submit|button/.test(el.type);
+    }).map(function (el) {
+      var item = el.closest("[data-loom-key]"),
+        k = (item ? item.getAttribute("data-loom-key") : "") + " " + el.name + (/checkbox|radio/.test(el.type) ? "=" + el.value : "");
+      seen[k] = (seen[k] || 0) + 1;
+      return [k + " " + seen[k], el];
     });
   }
-  function key(el) { return el.name + (/checkbox|radio/.test(el.type) ? "=" + el.value : ""); }
   function value(el) { return /checkbox|radio/.test(el.type) ? el.checked : el.value; }
+  // rendered is the value the server rendered for el.
+  function rendered(el) {
+    return /checkbox|radio/.test(el.type) ? el.defaultChecked :
+      el.options ? (el.querySelector("option[selected]") || el.options[0] || { value: "" }).value : el.defaultValue;
+  }
 
   function find(within, tag, attr, value) {
     return Array.prototype.some.call(within.querySelectorAll(tag + "[" + attr + "]"), function (el) {
