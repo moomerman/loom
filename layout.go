@@ -1,6 +1,7 @@
 package loom
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -204,12 +205,22 @@ func (g *Group) Handle(pattern string, h http.Handler) {
 	}
 	a.mux.Handle(method+" "+full, g.wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c := &Ctx{Request: r, app: a, scope: scope, ctx: r.Context()}
-		if err := authorize(checks, c); err != nil {
-			a.refuse(w, r, g, err.(*authError))
-			return
+		var denied *authError
+		var over *LimitError
+		err := authorize(checks, c)
+		if err == nil {
+			err = a.allow(c, limits, method+" "+full, "", nil)
 		}
-		if err := a.allow(c, limits, method+" "+full, "", nil); err != nil {
-			a.refuseLimited(w, r, g, err.(*LimitError))
+		switch {
+		case errors.As(err, &denied):
+			a.refuse(w, r, g, denied)
+			return
+		case errors.As(err, &over):
+			a.refuseLimited(w, r, g, over)
+			return
+		case err != nil: // an auth check or rate limit key panicked (RT402)
+			a.logError("", err)
+			a.serveError(w, r, g, http.StatusInternalServerError, err)
 			return
 		}
 		h.ServeHTTP(w, r)

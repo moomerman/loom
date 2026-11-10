@@ -186,14 +186,28 @@ func pathValues(route, path string) [][2]string {
 // With carry, a live navigation brought the live layout's state from the
 // previous page, already mounted. browser is the browser cookie's hash,
 // and kept the state a remount brought back, sealed (keep.go).
-func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carried, browser, kept string) (*View, error) {
+//
+// A mount that fails cancels the page's context, so goroutines Mount
+// started on c.Context() stop. A panic anywhere in it (Mount, Assigns
+// and rendering recover their own; an auth check, a rate limit's key,
+// Keep) is returned as an error, never unwound: a restart mounts on the
+// session's goroutine, where a panic would end the process.
+func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carried, browser, kept string) (_ *View, err error) {
 	clone, err := clonePage(rt.prototype)
 	if err != nil {
 		return nil, err
 	}
-	page := bindPage(clone)
-	scope := rt.styledScope()
 	ctx, cancel := context.WithCancel(context.WithoutCancel(r.Context()))
+	defer func() {
+		if p := recover(); p != nil {
+			err = panicError("mounting "+rt.path, p)
+		}
+		if err != nil {
+			cancel()
+		}
+	}()
+	page := bindPage(clone) // calls the page's Events
+	scope := rt.styledScope()
 	v := &View{page: page, route: rt, tmpl: rt.tmpl, auth: rt.auth, watch: rt.watch, scope: scope, cancel: cancel, ctx: &Ctx{SID: sid, Request: r, app: rt.group.app, scope: scope}, browser: browser}
 	v.base = trace.WithTally(ctx, &v.tally)
 	v.begin(trace.ID(r.Context())) // the page load's trace, if the runtime gave one
@@ -235,15 +249,15 @@ func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carrie
 		v.layout, v.root = rt.group.appLayout(), rt.group.rootLayout()
 	}
 	if err := authorize(v.auth, v.ctx); err != nil {
-		cancel()
 		return nil, err
 	}
 	if err := rt.group.app.allow(v.ctx, rt.limits, rt.path, "", nil); err != nil {
-		cancel()
 		return nil, err
 	}
 	// What a remount brought back goes in before Mount, so Mount sees it.
-	v.restored = v.restore(kept, carry != nil)
+	if v.restored, err = v.restore(kept, carry != nil); err != nil {
+		return nil, err
+	}
 	// The layout mounts first, so the page's Mount can read it (LayoutOf).
 	if v.live != nil && carry == nil {
 		if err := v.run(v.live, "Mount", func() { v.live.page.Mount(v.ctx) }); err != nil {
@@ -271,9 +285,11 @@ func newView(rt *route, r *http.Request, sid string, layouts bool, carry *carrie
 	if err != nil {
 		return nil, err
 	}
+	if err := v.keep(); err != nil {
+		return nil, err
+	}
 	v.tree, v.assigns, v.lassign, v.version, v.title = tree, assigns, lassign, 1, v.ctx.title
 	v.ctx.changed, v.ctx.loaded = false, true
-	v.keep()
 	return v, nil
 }
 
@@ -456,8 +472,10 @@ func (v *View) update(assigns, lassign Assigns, what string, err error) (map[str
 	if err != nil {
 		return nil, err // keys were checked by render; this would be a Loom bug
 	}
+	if err := v.keep(); err != nil {
+		return nil, err
+	}
 	v.tree, v.assigns, v.lassign = tree, assigns, lassign
-	v.keep()
 	if d != nil || v.ctx.title != v.title {
 		v.version++
 		v.title = v.ctx.title

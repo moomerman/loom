@@ -206,7 +206,9 @@ func (e *LimitError) retryAfter() string {
 // allow counts an attempt against each of limits that applies to event
 // ("" for a page load or handler request) and returns a *LimitError if
 // any is over. A store that fails is logged and the attempt allowed:
-// the limiter shouldn't take the app down with its database.
+// the limiter shouldn't take the app down with its database. A key func
+// that panics is returned as an RT402 error instead: the app's code
+// failed, and nothing it guards should run.
 func (a *App) allow(c *Ctx, limits []*limit, path, event string, payload Payload) error {
 	if len(limits) == 0 {
 		return nil
@@ -217,7 +219,13 @@ func (a *App) allow(c *Ctx, limits []*limit, path, event string, payload Payload
 		if len(l.On) > 0 && !slices.Contains(l.On, event) {
 			continue
 		}
-		key := l.Key.fn(c, event, payload)
+		// A key func that panics (ByUser's session lookup failing, say)
+		// fails closed: the request is refused as failed, not let through
+		// uncounted, and the panic takes the path a handler's does.
+		var key string
+		if err := guard("a rate limit's key func", func() { key = l.Key.fn(c, event, payload) }); err != nil {
+			return err
+		}
 		if key == "" {
 			continue
 		}

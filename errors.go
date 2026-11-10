@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 // Runtime error codes.
 const (
 	RT401 = "RT401" // a page's assigns don't fit its component
-	RT402 = "RT402" // Mount, an event handler, HandleInfo, Assigns or rendering panicked
+	RT402 = "RT402" // Mount, an event handler, HandleInfo, Assigns, rendering, an auth check, a rate limit key or Keep panicked
 	RT403 = "RT403" // a list has duplicate :key values
 	RT404 = "RT404" // unknown or expired session
 	RT405 = "RT405" // malformed event request
@@ -102,6 +102,22 @@ func panicError(what string, p any) *Error {
 		Where: callerOutsideLoom(),
 		Fix:   "fix the panic at the location shown; the page was restarted with a fresh Mount",
 	}
+}
+
+// guard runs f, user-supplied code such as an auth check, a rate limit's
+// key func or a page's Keep, turning a panic into an error (RT402, as
+// for a handler) instead of letting it unwind the goroutine. On a
+// session's goroutine an escaped panic would end the whole process, and
+// every page on it; as an error, it takes the same path a panicking
+// handler does: reported, and the page restarted.
+func guard(what string, f func()) (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = panicError(what, p)
+		}
+	}()
+	f()
+	return nil
 }
 
 // failError converts an error a page reported with Ctx.Fail into an

@@ -512,7 +512,7 @@ the browser reloads. `/_loom/event` answers JSON errors as
 A page rendered with assigns of the wrong type for its template. A page's `Assigns` method is checked when its route is registered (RT406), so this points at a Loom bug or a page built around that check. Return the assigns struct generated for the template, e.g. `templates.TodoAppAssigns{...}`.
 
 ### RT402
-Mount, an event handler, `HandleInfo`, `Assigns` or rendering panicked. The error gives the panic value and the innermost location outside Loom. Fix the panic; the page was restarted.
+Mount, an event handler, `HandleInfo`, `Assigns` or rendering panicked, or the app's code the runtime calls around them: an auth check (`loom.Auth`), a rate limit's key func (`loom.KeyBy`, or `loom.ByUser` when the session store fails), a page's `Keep` or `Events`. The error gives the panic value and the innermost location outside Loom. A panicking auth check or key func fails closed: the event, page load or request it guards doesn't run. During an event the page restarts with a fresh Mount, as for a handler; if the restart's mount fails too, the session ends and the browser reloads. A page load or handler request answers 500 with the error page. A panic is never let end the process. Fix the panic at the location shown.
 
 ### RT403
 A `:for` list rendered two items with the same `:key`. Keys must be unique within a list; use an id, not a title.

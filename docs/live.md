@@ -76,7 +76,8 @@ func (p *TodoPage) add(c *loom.Ctx, payload loom.Payload) {
   load.)
 - If Mount, a handler, Assigns or rendering panics, the page restarts
   with a fresh Mount and the browser gets a full render (RT402). See
-  `errors.md`.
+  `errors.md`. So does a panic in an auth check, a rate limit's key or
+  Keep, and the event it guards doesn't run.
 - **A URL that names nothing** (`/tracks/{id}` with no such track):
   call `c.NotFound()` in Mount and return. The page load answers 404
   with the app's error page, and Assigns doesn't run. Later, in a

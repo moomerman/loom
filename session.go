@@ -140,6 +140,7 @@ func (a *App) startSession(rt *route, r *http.Request, browser string, carry *ca
 	}
 	doc, err = v.Document()
 	if err != nil {
+		v.Close()
 		a.reportError(r.Context(), s.id, err, "route", rt.path)
 		return nil, "", err
 	}
@@ -196,24 +197,43 @@ func (a *App) session(sid string) *session {
 
 // run is the session goroutine: the only code that touches s.view.
 func (s *session) run() {
-	for {
-		select {
-		case ev := <-s.events:
-			s.handle(ev)
-		case f := <-s.calls:
-			f()
-		case <-s.quit:
-			if s.timer != nil {
-				s.timer.Stop()
-			}
-			s.unsubscribeTopics()
-			if len(s.route.watch) > 0 {
-				s.app.unwatch(s)
-			}
-			s.view.Close()
-			return
-		}
+	for s.step() {
 	}
+}
+
+// step handles one event, call or the quit, and reports whether the
+// session goes on. It is the last resort against a panic: the View
+// turns its own and the app's panics into errors, and handle restarts
+// the page on those, so a panic reaching here is one nothing caught (a
+// Loom bug, or app code reached from a new place). It must not end the
+// process, which would take every page on the node with it, so it is
+// reported (RT402) and the session closed: the browser reloads the page.
+func (s *session) step() (more bool) {
+	more = true
+	defer func() {
+		if p := recover(); p != nil {
+			// Not s.logError: the view may be what failed.
+			s.app.reportError(context.Background(), s.id, panicError("the page's session", p), "route", s.route.path)
+			s.close("failed")
+		}
+	}()
+	select {
+	case ev := <-s.events:
+		s.handle(ev)
+	case f := <-s.calls:
+		f()
+	case <-s.quit:
+		more = false // even if what follows panics, there's nothing left to run
+		if s.timer != nil {
+			s.timer.Stop()
+		}
+		s.unsubscribeTopics()
+		if len(s.route.watch) > 0 {
+			s.app.unwatch(s)
+		}
+		s.view.Close()
+	}
+	return more
 }
 
 func (s *session) handle(ev pageEvent) {
@@ -246,22 +266,7 @@ func (s *session) handle(ev pageEvent) {
 	s.view.setTrace(ev.trace)
 	s.view.Tally().Reset()
 	var d map[string]any
-	switch {
-	case ev.watch:
-		s.watching.pending.Store(false) // a change from now on renders again
-		s.watching.last.Store(time.Now().UnixNano())
-		d, err = s.view.Refresh()
-	case ev.info != nil:
-		d, err = s.view.Info(*ev.info)
-	case ev.timer:
-		d, err = s.view.RunTimers()
-	case ev.patch != "":
-		d, err = s.view.Patch(ev.patch)
-		s.view.Patched() // the browser pushes the URL it gets in the answer
-		res.url = s.view.URL()
-	default:
-		d, err = s.view.Event(ev.name, ev.payload)
-	}
+	d, err = s.dispatch(ev, &res)
 	for _, f := range s.view.Failures() {
 		s.logError(f)
 	}
@@ -314,6 +319,34 @@ func (s *session) handle(ev pageEvent) {
 	}
 	if url := s.view.Navigation(); url != "" {
 		s.navigate(url)
+	}
+}
+
+// dispatch runs ev on the view. A panic the view didn't turn into an
+// error itself comes back as one (RT402), so the page restarts as for a
+// panicking handler, rather than the panic ending the session goroutine.
+func (s *session) dispatch(ev pageEvent, res *eventResult) (d map[string]any, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			d, err = nil, panicError(ev.what(), p)
+		}
+	}()
+	switch {
+	case ev.watch:
+		s.watching.pending.Store(false) // a change from now on renders again
+		s.watching.last.Store(time.Now().UnixNano())
+		return s.view.Refresh()
+	case ev.info != nil:
+		return s.view.Info(*ev.info)
+	case ev.timer:
+		return s.view.RunTimers()
+	case ev.patch != "":
+		d, err = s.view.Patch(ev.patch)
+		s.view.Patched() // the browser pushes the URL it gets in the answer
+		res.url = s.view.URL()
+		return d, err
+	default:
+		return s.view.Event(ev.name, ev.payload)
 	}
 }
 
@@ -544,7 +577,7 @@ func (s *session) unsubscribe(ch chan message) {
 func (s *session) call(f func()) bool {
 	done := make(chan struct{})
 	select {
-	case s.calls <- func() { f(); close(done) }:
+	case s.calls <- func() { defer close(done); f() }: // the caller returns even if f panics
 		<-done
 		return true
 	case <-s.quit:

@@ -224,25 +224,32 @@ func (v *View) Kept() string { return v.kept }
 // keep encodes and seals what the page and its live layout keep, after
 // a render. It reseals only when the state changed; state over MaxKept
 // is reported (RT454) and not kept, so a remount starts afresh rather
-// than from an older state.
-func (v *View) keep() {
+// than from an older state. A Keep (or its state's MarshalJSON) that
+// panics is returned as an error (RT402), which fails the action as a
+// panicking handler would; the kept state stays as of the last render
+// that kept it, for the restart to bring back.
+func (v *View) keep() error {
 	k := kept{Browser: v.browser}
 	if v.live != nil && !v.lent {
 		if kp, ok := v.live.page.(Keeper); ok {
 			k.Layout = fmt.Sprintf("%T", v.live.page)
-			k.LayoutKept, _ = json.Marshal(kp.Keep())
+			if err := guard(k.Layout+".Keep", func() { k.LayoutKept, _ = json.Marshal(kp.Keep()) }); err != nil {
+				return err
+			}
 		}
 	}
 	if kp, ok := v.page.page.(Keeper); ok {
 		k.Page = fmt.Sprintf("%T", v.page.page)
-		k.PageKept, _ = json.Marshal(kp.Keep())
+		if err := guard(k.Page+".Keep", func() { k.PageKept, _ = json.Marshal(kp.Keep()) }); err != nil {
+			return err
+		}
 	}
 	if k.Layout == "" && k.Page == "" {
-		return
+		return nil
 	}
 	plain, err := json.Marshal(k)
 	if err != nil || bytes.Equal(plain, v.keptPlain) {
-		return
+		return nil
 	}
 	v.keptPlain = plain
 	sealed, err := v.ctx.app.sealKept(plain)
@@ -254,9 +261,10 @@ func (v *View) keep() {
 	if err != nil {
 		v.kept = ""
 		v.ctx.failed = append(v.ctx.failed, err)
-		return
+		return nil
 	}
 	v.kept = sealed
+	return nil
 }
 
 // keepWhere names the type that keeps state, for RT454.
@@ -272,53 +280,65 @@ func keepWhere(v *View) string {
 // before Mount. It returns what happened, for page.mount's "kept":
 // "restored the layout's", "dropped: another browser's" and so on, or
 // "" when there was nothing to restore. A deploy that changed a kept
-// type so the old state no longer decodes drops that state alone.
-func (v *View) restore(sealed string, carried bool) string {
+// type so the old state no longer decodes drops that state alone. A
+// Keep that panics is an error (RT402), and the mount fails.
+func (v *View) restore(sealed string, carried bool) (string, error) {
 	if sealed == "" {
-		return ""
+		return "", nil
 	}
 	plain, err := v.ctx.app.openKept(sealed)
 	if err != nil {
-		return "dropped: not sealed by this app"
+		return "dropped: not sealed by this app", nil
 	}
 	var k kept
 	if err := json.Unmarshal(plain, &k); err != nil {
-		return "dropped: unreadable"
+		return "dropped: unreadable", nil
 	}
 	if k.Browser != v.browser {
-		return "dropped: another browser's"
+		return "dropped: another browser's", nil
 	}
 	var notes []string
 	if v.live != nil && !carried && k.Layout != "" {
-		if restoreInto(v.live.page, k.Layout, k.LayoutKept) {
+		ok, err := restoreInto(v.live.page, k.Layout, k.LayoutKept)
+		if err != nil {
+			return "", err
+		}
+		if ok {
 			notes = append(notes, "restored the layout's")
 		} else {
 			notes = append(notes, "dropped the layout's: it no longer fits "+fmt.Sprintf("%T", v.live.page))
 		}
 	}
 	if k.Page != "" {
-		if restoreInto(v.page.page, k.Page, k.PageKept) {
+		ok, err := restoreInto(v.page.page, k.Page, k.PageKept)
+		if err != nil {
+			return "", err
+		}
+		if ok {
 			notes = append(notes, "restored the page's")
 		} else {
 			notes = append(notes, "dropped the page's: it no longer fits "+fmt.Sprintf("%T", v.page.page))
 		}
 	}
-	return strings.Join(notes, "; ")
+	return strings.Join(notes, "; "), nil
 }
 
 // restoreInto decodes data into p's kept state if p is still of type
 // name and keeps state. It decodes into a fresh value first, so a
-// failure leaves p as it was.
-func restoreInto(p Page, name string, data json.RawMessage) bool {
+// failure leaves p as it was. A panicking Keep is an error (RT402).
+func restoreInto(p Page, name string, data json.RawMessage) (bool, error) {
 	kp, ok := p.(Keeper)
 	if !ok || fmt.Sprintf("%T", p) != name {
-		return false
+		return false, nil
 	}
-	dst := reflect.ValueOf(kp.Keep())
+	var dst reflect.Value
+	if err := guard(name+".Keep", func() { dst = reflect.ValueOf(kp.Keep()) }); err != nil {
+		return false, err
+	}
 	fresh := reflect.New(dst.Elem().Type())
 	if err := json.Unmarshal(data, fresh.Interface()); err != nil {
-		return false
+		return false, nil
 	}
 	dst.Elem().Set(fresh.Elem())
-	return true
+	return true, nil
 }

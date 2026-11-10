@@ -220,9 +220,18 @@ func (g *Group) scope() *render.Scope {
 }
 
 // authorize runs the checks in order and returns the first refusal.
+//
+// A check that panics (a session store that failed under c.UserID, say)
+// fails closed: authorize returns the panic as an RT402 error, not an
+// *authError, so nothing it guards runs, and the caller treats it as a
+// failure, as it would a panicking handler, rather than as a refusal.
 func authorize(checks []AuthFunc, c *Ctx) error {
 	for _, check := range checks {
-		if err := check(c); err != nil {
+		var err error
+		if panicked := guard("an auth check", func() { err = check(c) }); panicked != nil {
+			return panicked
+		}
+		if err != nil {
 			return &authError{err}
 		}
 	}
