@@ -304,13 +304,16 @@ loomtest.AssertPreviewsAccessible(t, components.Menu, rule)
 
 ## The starter kit
 
-Loom ships 16 components to copy into an app: alert, badge, button, card,
-checkbox, dialog, dropdown, empty_state, form_field, input, link, select,
-spinner, table, tabs (Tabs and Tab) and textarea. They are styled only
+Loom ships 17 components to copy into an app: alert, badge, button, card,
+checkbox, dialog, dropdown, empty_state, form_field, input, link, menu,
+select, spinner, table, tabs (Tabs and Tab) and textarea. They are styled only
 with tokens, accessible by default (labels, roles, `aria-*`), and written
 as the reference for idiomatic components. Dialog (focus trap, Escape),
-dropdown (a listbox driven by the keyboard, with DropdownOption)
-and tabs (arrow keys) use behaviors, so each comes with its `.js` module. The
+dropdown (a listbox for picking a value, driven by the keyboard, with
+DropdownOption), menu (a `<details>` menu of links, with MenuItem, that
+closes when one is chosen, on a click outside or Escape) and tabs (arrow
+keys) use behaviors, so each comes with its `.js` module. For a menu of
+links use menu, not dropdown. The
 button and form field show a pending event (`loom-pending`, `live.md`).
 
 ```

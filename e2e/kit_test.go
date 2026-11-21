@@ -84,11 +84,27 @@ func (p *tabsPage) Assigns(c *loom.Ctx) kit.TabsAssigns {
 	}}
 }
 
+// menuPage shows the kit's menu of links, within the page.
+type menuPage struct{}
+
+func (p *menuPage) Mount(c *loom.Ctx) {}
+
+func (p *menuPage) Assigns(c *loom.Ctx) kit.MenuAssigns {
+	return kit.MenuAssigns{Label: "Domains", InnerBlock: func() *render.Rendered {
+		var r []render.Dynamic
+		for _, d := range []string{"a", "b"} {
+			r = append(r, kit.MenuItem.Render(nil, kit.MenuItemAssigns{Href: "#" + d, Label: d + ".example", Current: d == "a"}))
+		}
+		return &render.Rendered{Statics: &render.Statics{Parts: []string{"", "", ""}}, Dynamics: r}
+	}}
+}
+
 func kitApp(t *testing.T) string {
 	app := loom.New(loom.Config{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Dev: loom.DevOn})
 	app.Live("/dropdown", &dropdownPage{}, kit.Dropdown)
 	app.Live("/dialog", &dialogPage{}, kit.Dialog)
 	app.Live("/tabs", &tabsPage{}, kit.Tabs)
+	app.Live("/menu", &menuPage{}, kit.Menu)
 	srv := httptest.NewServer(app)
 	t.Cleanup(srv.Close)
 	return srv.URL
@@ -157,6 +173,33 @@ func TestKitTabs(t *testing.T) {
 		waitJS(selected+` === "done" && document.activeElement.textContent === "done"`),
 		chromedp.KeyEvent(kb.Home),
 		waitJS(selected+` === "all"`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestKitMenu opens the kit's menu from its summary and closes it each
+// way: Escape (back to the summary), a click outside, and choosing a link.
+func TestKitMenu(t *testing.T) {
+	url := kitApp(t)
+	ctx := browser(t)
+	const open = `document.querySelector("details.menu").open`
+	err := chromedp.Do(ctx,
+		chromedp.Navigate(url+"/menu"),
+		waitFor(`#loom-root.loom-connected details.menu`),
+		click("summary"),
+		waitJS(open),
+		chromedp.KeyEvent(kb.Escape),
+		waitJS(`!`+open+` && document.activeElement === document.querySelector("summary")`),
+		click("summary"),
+		waitJS(open),
+		js(`document.body.click(); true`),
+		waitJS(`!`+open),
+		click("summary"),
+		waitJS(open),
+		click(`a[href="#b"]`),
+		waitJS(`!`+open+` && location.hash === "#b"`),
 	)
 	if err != nil {
 		t.Fatal(err)

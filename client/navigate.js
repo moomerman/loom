@@ -64,6 +64,7 @@
         root.loomStay();
         // HandleParams may have corrected the URL: keep the one it settled on.
         root.loomPatched(a.url + url.replace(/^[^#]*/, ""), push ? "push" : "replace");
+        shut();
       });
       // A remount redirected (an auth check failed) loads the page.
       if (r.headers.get("X-Loom-Navigate") !== "swap" || remount && r.url !== url.split("#")[0]) throw new Error("not swappable");
@@ -73,6 +74,15 @@
     }).catch(function () {
       if (n === nav) push ? location.assign(url) : location.replace(url);
     });
+  }
+
+  // shut closes the menus the user opened, as a page load would: after a
+  // live navigation, a <details> in the live root the server didn't
+  // render open (loom.js keeps its render in loomOpen) is closed, so a
+  // menu of links doesn't stay open over the page it led to. A remount
+  // keeps them.
+  function shut() {
+    root.querySelectorAll("details[open]").forEach(function (d) { if (d.loomOpen !== true) d.open = false; });
   }
 
   // swap takes the new document's stylesheets (once they load, so the
@@ -112,6 +122,7 @@
       head.querySelectorAll("[data-live-meta]").forEach(function (m) { m.remove(); });
       doc.querySelectorAll("[data-live-meta]").forEach(function (m) { head.appendChild(document.importNode(m, true)); });
       root.loomSwap(JSON.parse(tree.textContent));
+      if (!remount) shut();
       // A remount restores that input where the new render doesn't have
       // it, telling each form it restored that has an on:change, so the
       // new session sees it too.

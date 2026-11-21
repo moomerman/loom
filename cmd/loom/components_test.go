@@ -20,7 +20,7 @@ func TestComponentsList(t *testing.T) {
 			Name string `json:"name"`
 		} `json:"components"`
 	}
-	if err := json.Unmarshal(out.Bytes(), &cat); err != nil || len(cat) != 16 {
+	if err := json.Unmarshal(out.Bytes(), &cat); err != nil || len(cat) != 17 {
 		t.Fatalf("catalog: %v, %d entries\n%s", err, len(cat), out.String())
 	}
 	out.Reset()

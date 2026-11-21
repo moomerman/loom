@@ -308,7 +308,11 @@ browser's own submit.
 - On a swap the browser takes the new page's live root, title,
   stylesheet (waiting until it loads) and any scripts it lacks (its
   behaviors), pushes the URL and scrolls to the top. The app
-  layout is morphed like any update, so its elements keep their state.
+  layout is morphed like any update, so its elements keep their state,
+  except that a `<details>` the user opened is closed (one the server
+  renders `open` stays open), as a page load would: a menu of links
+  doesn't stay open over the page it led to. A patch does the same; a
+  remount keeps them. The kit's `menu` is such a menu.
 - Auth checks run as on any page load; a redirect is followed, and a
   refusal loads the page as usual to show it.
 - A page navigates from Go with `c.Navigate(url)`: from a handler or

@@ -77,6 +77,9 @@ func TestRender(t *testing.T) {
 			return kit.DropdownOption.Render(nil, kit.DropdownOptionAssigns{Value: "pear", Label: "Pear"})
 		}}),
 		loomtest.Render(t, kit.Dropdown, kit.DropdownAssigns{Label: "Closed"}),
+		loomtest.Render(t, kit.Menu, kit.MenuAssigns{Label: "Domains", InnerBlock: func() *render.Rendered {
+			return kit.MenuItem.Render(nil, kit.MenuItemAssigns{Href: "/a", Label: "a.example", Current: true})
+		}}),
 		loomtest.Render(t, kit.Table, kit.TableAssigns{Caption: "Jobs", Head: slot("<tr><th>ID</th></tr>"), InnerBlock: slot("<tr><td>1</td></tr>")}),
 		loomtest.Render(t, kit.Tabs, kit.TabsAssigns{Label: "Filter", InnerBlock: func() *render.Rendered {
 			return kit.Tab.Render(nil, kit.TabAssigns{Label: "All", Selected: true, OnClick: render.Event{Name: "filter"}})

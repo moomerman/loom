@@ -231,3 +231,34 @@ func TestSubmitClearsForm(t *testing.T) {
 		t.Errorf("after submitting: %q by Enter, %q by click; want both cleared", entered, clicked)
 	}
 }
+
+// A live navigation closes the <details> the user opened, as a page
+// load would, so a menu of links doesn't stay open over the page it led
+// to; a diff on the same page keeps it open (above).
+func TestNavigationClosesMenus(t *testing.T) {
+	app := loom.New()
+	app.Live("/", &fieldsPage{}, templates.Fields)
+	app.Live("/other", &fieldsPage{}, templates.Fields)
+	srv := httptest.NewServer(app)
+	t.Cleanup(srv.Close)
+	ctx := browser(t)
+	logConsole(t, ctx)
+	var open bool
+	err := chromedp.Do(ctx,
+		chromedp.Navigate(srv.URL),
+		waitFor("#loom-root.loom-connected .bump"),
+		js(`window.sid = document.getElementById("loom-root").dataset.sid; true`),
+		click("summary"),
+		waitJS(`document.querySelector("details").open`),
+		// A link in the open menu, as a nav menu has.
+		js(`const a = document.createElement("a"); a.href = "/other"; a.className = "go"; document.querySelector("details p").append(a); a.click(); true`),
+		waitJS(`location.pathname === "/other" && document.getElementById("loom-root").dataset.sid !== window.sid`),
+		eval(`document.querySelector("details").open`, &open),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if open {
+		t.Error("the details opened before a live navigation is still open after it")
+	}
+}

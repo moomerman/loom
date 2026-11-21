@@ -44,6 +44,7 @@ var Catalog = []Entry{
 	{"form_field", "A label, hint and error around any control", nil},
 	{"input", "A labelled text input (text, email, password, search, number, url or date) with hint and error", nil},
 	{"link", "A link, inline or in navigation, with the current page marked", nil},
+	{"menu", "A disclosure menu of links that closes when one is chosen, on a click outside or Escape (Menu and MenuItem)", []string{"menu.js"}},
 	{"select", "A labelled select; options go in its content", nil},
 	{"spinner", "A loading indicator with an accessible label", nil},
 	{"table", "A table with a caption, header row and body", nil},

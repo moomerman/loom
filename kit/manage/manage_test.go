@@ -78,7 +78,7 @@ func TestCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cs) != 16 {
+	if len(cs) != 17 {
 		t.Fatalf("%d components", len(cs))
 	}
 	var button *Component
