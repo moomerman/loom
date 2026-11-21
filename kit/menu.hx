@@ -1,6 +1,6 @@
 behavior menu()
 
-component Menu(label string @preview("Domains"), inner_block slot @preview("<a href=\"/a\" class=\"item\">a.example</a><a href=\"/b\" class=\"item\">b.example</a>"))
+component Menu(label string @preview("a.example"), aria_label string = "" @preview("Switch domain, now a.example"), inner_block slot @preview("<a href=\"/a\" class=\"item\">a.example</a><a href=\"/b\" class=\"item\">b.example</a>"))
 
 <style>
   .menu { position: relative; display: inline-block; }
@@ -10,7 +10,7 @@ component Menu(label string @preview("Domains"), inner_block slot @preview("<a h
   .items { position: absolute; z-index: 10; min-width: 100%; margin-top: token(space.1); padding: token(space.1); display: flex; flex-direction: column; background: token(color.surface); color: token(color.on-surface); border: 1px solid token(color.line); border-radius: token(radius.md); box-shadow: token(shadow.lg); }
 </style>
 <details class="menu" use:menu>
-  <summary class="trigger">{label}</summary>
+  <summary class="trigger" aria-label={if aria_label == "", label, aria_label}>{label}</summary>
   <div class="items">{render_slot(inner_block)}</div>
 </details>
 

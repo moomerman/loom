@@ -311,7 +311,9 @@ with tokens, accessible by default (labels, roles, `aria-*`), and written
 as the reference for idiomatic components. Dialog (focus trap, Escape),
 dropdown (a listbox for picking a value, driven by the keyboard, with
 DropdownOption), menu (a `<details>` menu of links, with MenuItem, that
-closes when one is chosen, on a click outside or Escape) and tabs (arrow
+closes when one is chosen, on a click outside or Escape; give it an
+`aria_label` that includes its visible label when that alone, such as
+the current choice, doesn't say what the menu is for) and tabs (arrow
 keys) use behaviors, so each comes with its `.js` module. For a menu of
 links use menu, not dropdown. The
 button and form field show a pending event (`loom-pending`, `live.md`).

@@ -17,6 +17,7 @@ var MenuBehavior = render.RegisterBehavior(&render.Behavior{ID: "menu-df3130", N
 // MenuAssigns holds the parameters of component Menu.
 type MenuAssigns struct {
 	Label      string
+	AriaLabel  string
 	InnerBlock render.Slot
 }
 
@@ -25,7 +26,8 @@ var Menu = render.Register(render.Component[MenuAssigns]{Name: "Menu", Package: 
 
 // menuPreviews are the samples the preview gallery shows.
 var menuPreviews = []render.Preview[MenuAssigns]{
-	{Name: "default", Assigns: MenuAssigns{Label: "Domains", InnerBlock: render.SampleSlot("<a href=\"/a\" class=\"item\">a.example</a><a href=\"/b\" class=\"item\">b.example</a>")}},
+	{Name: "default", Assigns: MenuAssigns{Label: "a.example", AriaLabel: "", InnerBlock: render.SampleSlot("<a href=\"/a\" class=\"item\">a.example</a><a href=\"/b\" class=\"item\">b.example</a>")}},
+	{Name: "aria_label=\"Switch domain, now a.example\"", Assigns: MenuAssigns{Label: "a.example", AriaLabel: "Switch domain, now a.example", InnerBlock: render.SampleSlot("<a href=\"/a\" class=\"item\">a.example</a><a href=\"/b\" class=\"item\">b.example</a>")}},
 }
 
 // menuAssets holds the CSS and behaviors of Menu and the components it calls.
@@ -37,12 +39,18 @@ var menuAssets = &render.Assets{CSS: `.menu.l-72a46d{position:relative;display:i
 `, Tokens: loomTokens, Behaviors: []*render.Behavior{MenuBehavior}}
 
 var (
-	menu0 = &render.Statics{ID: "Menu.0", Parts: []string{"<details", " class=\"menu l-72a46d\">\n  <summary class=\"trigger l-72a46d\">", "</summary>\n  <div class=\"items l-72a46d\">", "</div>\n</details>"}}
+	menu0 = &render.Statics{ID: "Menu.0", Parts: []string{"<details", " class=\"menu l-72a46d\">\n  <summary class=\"trigger l-72a46d\"", ">", "</summary>\n  <div class=\"items l-72a46d\">", "</div>\n</details>"}}
 )
 
 func renderMenu(s *render.Scope, a MenuAssigns) *render.Rendered {
 	return &render.Rendered{Statics: menu0, Dynamics: []render.Dynamic{
 		render.Use(MenuBehavior.ID, nil, ""),
+		render.Attr("aria-label", render.Escape(func() string {
+			if a.AriaLabel == "" {
+				return a.Label
+			}
+			return a.AriaLabel
+		}())),
 		render.Escape(a.Label),
 		render.RenderSlot(a.InnerBlock),
 	}}
