@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -145,19 +146,23 @@ func (b *s3) Put(ctx context.Context, key string, body io.Reader, size int64, o 
 	// twice; TLS protects it in transit.
 	counted := &countingReader{r: io.LimitReader(body, size)}
 	res, err := b.do(ctx, "PUT", b.objectURL(key, nil), h, counted, size, "UNSIGNED-PAYLOAD")
-	if counted.n < size {
+	if err == nil && res.StatusCode != http.StatusOK {
+		// The service can answer before it has read the body (a refusal
+		// of the request itself): its answer is the error, and the
+		// transport may still be reading, so counted isn't final.
+		defer res.Body.Close()
+		return b.responseError(res, "put", key)
+	}
+	if n := counted.n.Load(); n < size {
 		if err == nil {
 			res.Body.Close()
 		}
-		return sizeError(key, size, counted.n)
+		return sizeError(key, size, n)
 	}
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return b.responseError(res, "put", key)
-	}
 	// A body longer than size was cut short: refuse what was stored.
 	var one [1]byte
 	if n, _ := io.ReadFull(body, one[:]); n > 0 {
@@ -339,14 +344,16 @@ func (b *s3) responseError(res *http.Response, op, key string) error {
 	return &Error{Code: SG003, Msg: msg, Fix: "the storage service answered with an error; check its status, and S3Config"}
 }
 
+// countingReader counts what the HTTP transport reads of a body, on
+// its own goroutine, so n is atomic.
 type countingReader struct {
 	r io.Reader
-	n int64
+	n atomic.Int64
 }
 
 func (c *countingReader) Read(p []byte) (int, error) {
 	n, err := c.r.Read(p)
-	c.n += int64(n)
+	c.n.Add(int64(n))
 	return n, err
 }
 
