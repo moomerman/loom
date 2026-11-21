@@ -348,7 +348,12 @@ func (d *devServer) restartApp() error {
 	for {
 		select {
 		case <-done:
-			return fmt.Errorf("the app exited during startup (%v):\n%s\nDoes main call app.Run? Under loom dev it must serve with App.Run, which listens on $LOOM_ADDR", cmd.ProcessState, tail(output.String(), 4000))
+			out := tail(output.String(), 4000)
+			if !cmd.ProcessState.Success() && strings.TrimSpace(out) != "" {
+				// It failed and said why (a startup check, a panic): that is the answer.
+				return fmt.Errorf("the app exited during startup (%v):\n%s", cmd.ProcessState, out)
+			}
+			return fmt.Errorf("the app exited during startup (%v):\n%s\nDoes main call app.Run? Under loom dev it must serve with App.Run, which listens on $LOOM_ADDR", cmd.ProcessState, out)
 		default:
 		}
 		if c, err := net.DialTimeout("tcp", appAddr, 100*time.Millisecond); err == nil {

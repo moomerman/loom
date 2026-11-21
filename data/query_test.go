@@ -3,7 +3,9 @@ package data_test
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -261,4 +263,62 @@ func TestQueryReadOnly(t *testing.T) {
 	if n, _ := data.Get[int](ctx, db, `SELECT count(*) FROM ro`); n != 3 {
 		t.Fatalf("%d rows left", n)
 	}
+}
+
+// Postgres arrays scan into slices, and json and jsonb into maps,
+// structs and slices; arguments go in as they are.
+func TestArraysAndJSON(t *testing.T) {
+	db := loomtest.DB(t)
+	ctx := context.Background()
+	exec(t, db, `CREATE TABLE sites (id bigint PRIMARY KEY, tags text[], ports int8[], meta jsonb, checks jsonb, opts json)`)
+	type Meta struct {
+		Owner string `json:"owner"`
+		Plan  string `json:"plan"`
+	}
+	type Check struct {
+		Path string `json:"path"`
+		Code int    `json:"code"`
+	}
+	type Site struct {
+		ID     int64
+		Tags   []string
+		Ports  []int64
+		Meta   *Meta
+		Checks []Check
+		Opts   map[string]any
+	}
+	meta, _ := json.Marshal(Meta{Owner: "ada", Plan: "pro"})
+	exec(t, db, `INSERT INTO sites VALUES (1, $1, $2, $3, '[{"path":"/","code":200}]', '{"debug":true}')`,
+		[]string{"web", `a "quoted", {odd} tag`}, []int64{80, 443}, meta)
+	exec(t, db, `INSERT INTO sites (id) VALUES (2)`)
+	sites, err := data.Select[Site](ctx, db, `SELECT * FROM sites ORDER BY id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := sites[0]
+	if !slices.Equal(s.Tags, []string{"web", `a "quoted", {odd} tag`}) || !slices.Equal(s.Ports, []int64{80, 443}) {
+		t.Errorf("arrays: %q %v", s.Tags, s.Ports)
+	}
+	if s.Meta == nil || *s.Meta != (Meta{"ada", "pro"}) || len(s.Checks) != 1 || s.Checks[0] != (Check{"/", 200}) || s.Opts["debug"] != true {
+		t.Errorf("json: %+v %+v %v", s.Meta, s.Checks, s.Opts)
+	}
+	if n := sites[1]; n.Tags != nil || n.Ports != nil || n.Meta != nil || n.Checks != nil || n.Opts != nil {
+		t.Errorf("NULLs: %+v", n)
+	}
+	// One column, into a slice or a map.
+	tags, err := data.Get[[]string](ctx, db, `SELECT tags FROM sites WHERE id = 1`)
+	if err != nil || len(tags) != 2 {
+		t.Errorf("Get[[]string] = %q, %v", tags, err)
+	}
+	opts, err := data.Get[map[string]bool](ctx, db, `SELECT opts FROM sites WHERE id = 1`)
+	if err != nil || !opts["debug"] {
+		t.Errorf("Get[map] = %v, %v", opts, err)
+	}
+	// A struct can't hold NULL, and a value of the wrong shape says so.
+	type Strict struct{ Meta Meta }
+	_, err = data.Select[Strict](ctx, db, `SELECT meta FROM sites WHERE id = 2`)
+	wantCode(t, err, data.DB611, `"meta"`, "NULL", "pointer")
+	type Wrong struct{ Tags map[string]int }
+	_, err = data.Select[Wrong](ctx, db, `SELECT tags FROM sites WHERE id = 1`)
+	wantCode(t, err, data.DB611, `"tags"`, "map[string]int")
 }

@@ -348,6 +348,15 @@ func TestStartupChecks(t *testing.T) {
 			t.Errorf("%s: %q, want %q", c.name, got, c.want)
 		}
 	}
+	// Under go test, an app that leaves Dev unset needs neither a
+	// BaseURL nor a Secret (loom.App.Testing).
+	app := loom.New()
+	app.UseDB(db)
+	loomtest.Mail(t, app)
+	app.Mount("/auth", auth.New(auth.Config{TwoFactor: auth.TwoFactorOptional, Providers: []auth.Provider{auth.GitHub("id", "secret")}}))
+	if err := app.Validate(ctx); err != nil {
+		t.Errorf("under go test with no BaseURL or Secret: %v", err)
+	}
 	for name, cfg := range map[string]auth.Config{
 		"AfterSignOut //evil.com": {AfterSignOut: "//evil.com"},
 		"a provider twice":        {Providers: []auth.Provider{auth.Google("a", "b"), auth.Google("c", "d")}},

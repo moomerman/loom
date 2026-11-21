@@ -264,7 +264,7 @@ type keptChromeNil struct{ keptChrome }
 func (l *keptChromeNil) Keep() any { return nil }
 
 func TestKeepNeedsSecret(t *testing.T) {
-	app, _ := newKeepApp(t, Config{})
+	app, _ := newKeepApp(t, Config{Dev: DevOff})
 	if err := app.checkKeep(); err == nil || err.(*Error).Code != RT453 {
 		t.Errorf("no secret: %v, want RT453", err)
 	}

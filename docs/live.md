@@ -436,6 +436,10 @@ func (p *TodoPage) HandleInfo(c *loom.Ctx, msg loom.Message) {
   node, by Postgres NOTIFY; without one it stays in-process
   (`Config.PubSub` replaces it). Keep payloads small (RT447 over 8000
   bytes): send an id and load the rest. See `deploy.md`.
+- To debounce a busy topic, don't reload in `HandleInfo`: call
+  `c.SendAfter(500*time.Millisecond, "reload", nil)` there, and reload
+  in the `reload` event. Each message replaces the pending timer, so a
+  burst reloads once. (A table watch is already coalesced.)
 - A page that subscribes without a `HandleInfo` method is error RT410.
 - Messages are like events but come from the server, so the browser
   can't forge them. Subscriptions end when the page closes and are made

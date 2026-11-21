@@ -247,7 +247,7 @@ func providerFunc(name string) string {
 // public address, except in dev, where they use the address the browser
 // used.
 func (a *App) checkBaseURL(what string) error {
-	if a.app.BaseURL() == "" && !a.app.Dev() {
+	if a.app.BaseURL() == "" && !a.app.Dev() && !a.app.Testing() {
 		return &loom.Error{Code: AU902, Msg: "auth " + what + ", but loom.Config.BaseURL is empty",
 			Fix: `set the app's public address, e.g. loom.New(loom.Config{BaseURL: os.Getenv("BASE_URL")}) with BASE_URL=https://app.example.com`}
 	}
@@ -306,7 +306,7 @@ func (a *App) sendLink(c *loom.Ctx, kind, email string) error {
 	if next := c.Request.URL.Query().Get("next"); loom.LocalPath(next) {
 		job.Next = next
 	}
-	if a.app.BaseURL() == "" && a.app.Dev() {
+	if a.app.BaseURL() == "" && (a.app.Dev() || a.app.Testing()) {
 		job.Base = origin(c.Request)
 	}
 	return a.app.DB().Tx(c.Context(), func(tx loom.Tx) error {
@@ -325,7 +325,7 @@ type SendLink struct {
 	Email string `json:"email"`
 	Kind  string `json:"kind"`           // "sign_in" or "reset"
 	Next  string `json:"next,omitempty"` // a sign-in link's page to go to after
-	Base  string `json:"base,omitempty"` // in dev without BaseURL, the page's origin
+	Base  string `json:"base,omitempty"` // in dev (or a test) without BaseURL, the page's origin
 
 	auth *App `json:"-"`
 }

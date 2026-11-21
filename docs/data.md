@@ -45,6 +45,11 @@ n, err := loom.Get[int](ctx, db, `select count(*) from todos`)
 - A column with no field is DB610, naming both; a value that doesn't fit
   its field (a NULL into `string`) is DB611.
 - A non-struct `T` (`int`, `string`, `time.Time`) takes a single column.
+- Postgres arrays scan into slices (`text[]` into `[]string`, `int8[]`
+  into `[]int64`), and `json`/`jsonb` into a struct, map or slice field,
+  by `encoding/json`. A NULL leaves a slice, map or pointer nil. Pass a
+  `[]string` for a `text[]` parameter, and `json.Marshal` a value for a
+  `jsonb` one.
 - `Select` returns an empty, non-nil slice for no rows. `Get` returns
   DB604 (`ErrNotFound`) for none and DB605 for more than one.
 - Placeholders are Postgres's `$1, $2`. SQL is the query language.
@@ -219,6 +224,14 @@ db := loomtest.DB(t, loomtest.Committed()) // a database of its own
 - `Committed()` clones the template into a fresh database, dropped
   afterwards, for real commits, concurrency, `LISTEN/NOTIFY` and the
   Postgres job store.
+- Postgres's `now()` is the database's clock at the start of the
+  transaction: the fake clocks (`loomtest.Jobs`, `p.Advance`,
+  `loomtest.LimitClock`) don't reach it, and in the test's one
+  transaction it never moves. Where a test depends on a time (an
+  expiry, a due date, a digest's window), pass it in as a parameter
+  from the code's clock (`c.Now()` in a job) instead of writing
+  `now()`: `WHERE expires_at > $1`. A column `DEFAULT now()` is fine for
+  times nothing compares.
 
 ```go
 func TestToggle(t *testing.T) {

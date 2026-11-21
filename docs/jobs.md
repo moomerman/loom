@@ -110,7 +110,17 @@ jobs.Enqueue(tx, SendWelcome{UserID: id}, jobs.Unique(time.Hour))
   the page.
 - `jobs.Unique(period)` does nothing if a job of the same type and args
   was enqueued within `period` and wasn't discarded or cancelled. The
-  result says so: `Result{ID: existing, Duplicate: true}`.
+  result says so: `Result{ID: existing, Duplicate: true}`. Uniqueness is
+  per argument: the key is the type and every field's JSON, so
+  `Discover{Domain: "a.com"}` and `Discover{Domain: "b.com"}` are two
+  jobs. What surprises:
+  - A job that already ran counts. A completed job holds its key for
+    the rest of `period` after it was enqueued, so `Unique(time.Hour)`
+    means at most one an hour, not one at a time.
+  - Fields tagged `json:"-"` (dependencies) aren't args, so they don't
+    tell jobs apart.
+  - The queue and when it runs (`jobs.In`, `jobs.At`) aren't part of the
+    key: a second enqueue with a later time is still a duplicate.
 
 ## States
 

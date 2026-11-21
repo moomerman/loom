@@ -55,7 +55,7 @@ loom migrate
 - **Startup errors:** email on with no mailer is AU901, no
   `loom.Config.BaseURL` outside dev AU902, a provider with no client ID or secret AU906,
   two-factor on (the default) with no `loom.Config.Secret` outside dev
-  AU909 (`errors.md`).
+  AU909 (`errors.md`). Tests need neither (Testing, below).
 - **Security.** Passwords are hashed with PBKDF2-SHA256, 600,000
   iterations (`auth.HashPassword`); a wrong email and a wrong password
   get the same answer in the same time; links are 256-bit, stored
@@ -299,6 +299,11 @@ p.Submit("form", loom.Payload{"email": "ada@example.com"}) // on /auth/forgot
 q.Drain(t)                                                  // sends the mail
 reset := loomtest.Mount(t, app, box.Link(t))               // follows its link
 ```
+
+An app made under `go test` with `loom.Config.Dev` left unset needs no
+`BaseURL` or `Secret` (`app.Testing()`): links use the request's origin,
+as in dev, and the secret is a fixed test one. Set `Dev: loom.DevOff` to
+test the production checks (AU902, AU909) instead.
 
 `loomtest.SignIn` starts a session and sends its cookie, so `SignedIn`
 lets the page in and `loom.User` loads `"ada"`. To test a sign-in page,

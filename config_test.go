@@ -455,8 +455,15 @@ func TestSeal(t *testing.T) {
 	if _, err := New(Config{Secret: strings.Repeat("t", 32)}).Open("auth.totp", sealed); !errors.Is(err, ErrSealed) {
 		t.Errorf("another secret: %v", err)
 	}
-	if _, err := New().Seal("auth.totp", nil); !errors.Is(err, ErrNoSecret) {
+	if _, err := New(Config{Dev: DevOff}).Seal("auth.totp", nil); !errors.Is(err, ErrNoSecret) {
 		t.Errorf("no secret: %v", err)
+	}
+	// Under go test, an app that leaves Dev unset has a test secret.
+	if app := New(); !app.Testing() || !app.HasSecret() {
+		t.Errorf("under go test: Testing %v, HasSecret %v", app.Testing(), app.HasSecret())
+	}
+	if New(Config{Dev: DevOff}).Testing() {
+		t.Error("Dev: DevOff is Testing")
 	}
 	defer func() {
 		if err, _ := recover().(error); code(err) != RT441 {

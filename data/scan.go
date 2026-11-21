@@ -1,14 +1,18 @@
 package data
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
 	"unicode"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Select runs a query and scans every row into a T.
@@ -22,6 +26,13 @@ import (
 // alone. A column with no field is an error (DB610). T may also be a
 // single value, such as int64, string or time.Time, for a query of one
 // column. A NULL needs a pointer or sql.Null* field (DB611).
+//
+// A Postgres array (text[], int8[], ...) scans into a slice ([]string,
+// []int64, ...), and json or jsonb into a map, a struct or a slice,
+// decoded with encoding/json: any field of those kinds that isn't a
+// sql.Scanner. A NULL leaves a slice or map nil. Arguments need nothing:
+// pass a []string for a text[] parameter, and json.Marshal a value for a
+// jsonb one.
 func Select[T any](ctx context.Context, q Querier, query string, args ...any) ([]T, error) {
 	rows, err := q.Query(ctx, query, args...)
 	if err != nil {
@@ -126,6 +137,7 @@ type plan struct {
 	cols   []string
 	fields [][]int // per column, the field index path; nil for a single value
 	names  []string
+	decode []bool // per column, whether it is an array or JSON (decoder)
 }
 
 var plans sync.Map // planKey -> *plan
@@ -156,6 +168,7 @@ func planFor(t reflect.Type, cols []string) (*plan, error) {
 			return nil, &Error{Code: DB612, Msg: fmt.Sprintf("the query returns %d columns (%s), but %s holds one value", len(cols), strings.Join(cols, ", "), t),
 				Fix: "select exactly one column, or scan into a struct with a field per column"}
 		}
+		p.decode = []bool{decoded(t)}
 		plans.Store(key, p)
 		return p, nil
 	}
@@ -175,6 +188,7 @@ func planFor(t reflect.Type, cols []string) (*plan, error) {
 			// select * returns; no struct is expected to hold it.
 			p.fields = append(p.fields, nil)
 			p.names = append(p.names, c)
+			p.decode = append(p.decode, false)
 			continue
 		}
 		if !ok {
@@ -183,6 +197,7 @@ func planFor(t reflect.Type, cols []string) (*plan, error) {
 		}
 		p.fields = append(p.fields, idx)
 		p.names = append(p.names, names[c])
+		p.decode = append(p.decode, decoded(t.FieldByIndex(idx).Type))
 	}
 	plans.Store(key, p)
 	return p, nil
@@ -223,7 +238,7 @@ func collectFields(t reflect.Type, index []int, prefix string, fields map[string
 func (p *plan) dests(v any) []any {
 	rv := reflect.ValueOf(v).Elem()
 	if p.fields == nil {
-		return []any{rv.Addr().Interface()}
+		return []any{dest(rv, p.decode[0])}
 	}
 	out := make([]any, len(p.fields))
 	for i, idx := range p.fields {
@@ -231,9 +246,79 @@ func (p *plan) dests(v any) []any {
 			out[i] = new(any) // a column no field takes: loom_xid
 			continue
 		}
-		out[i] = rv.FieldByIndex(idx).Addr().Interface()
+		out[i] = dest(rv.FieldByIndex(idx), p.decode[i])
 	}
 	return out
+}
+
+func dest(v reflect.Value, decode bool) any {
+	if decode {
+		return decoder{v}
+	}
+	return v.Addr().Interface()
+}
+
+// decoded reports whether a value of type t is scanned by a decoder: a
+// slice (but []byte), map or struct (but time.Time) that isn't a
+// sql.Scanner, or a pointer to one.
+func decoded(t reflect.Type) bool {
+	if reflect.PointerTo(t).Implements(scannerType) {
+		return false
+	}
+	switch t.Kind() {
+	case reflect.Pointer:
+		return decoded(t.Elem())
+	case reflect.Slice:
+		return t.Elem().Kind() != reflect.Uint8
+	case reflect.Map:
+		return true
+	case reflect.Struct:
+		return t != timeType
+	}
+	return false
+}
+
+// pgTypes decode Postgres arrays; a Map isn't safe for concurrent use.
+var pgTypes = sync.Pool{New: func() any { return pgtype.NewMap() }}
+
+// decoder scans a Postgres array into a slice, or JSON into a slice, map
+// or struct.
+type decoder struct{ v reflect.Value }
+
+func (d decoder) Scan(src any) error {
+	v := d.v
+	if src == nil {
+		if k := v.Kind(); k == reflect.Pointer || k == reflect.Slice || k == reflect.Map {
+			v.SetZero()
+			return nil
+		}
+		return fmt.Errorf("converting NULL to %s is unsupported", v.Type())
+	}
+	var text []byte
+	switch src := src.(type) {
+	case []byte:
+		text = src
+	case string:
+		text = []byte(src)
+	default:
+		return fmt.Errorf("converting %T to %s is unsupported: it takes a Postgres array or json", src, v.Type())
+	}
+	if v.Kind() == reflect.Pointer {
+		v.Set(reflect.New(v.Type().Elem()))
+		v = v.Elem()
+	}
+	if v.Kind() == reflect.Slice && bytes.HasPrefix(text, []byte("{")) {
+		m := pgTypes.Get().(*pgtype.Map)
+		defer pgTypes.Put(m)
+		if err := m.SQLScanner(v.Addr().Interface()).Scan(text); err != nil {
+			return fmt.Errorf("converting the array %.40q to %s: %v", text, v.Type(), err)
+		}
+		return nil
+	}
+	if err := json.Unmarshal(text, v.Addr().Interface()); err != nil {
+		return fmt.Errorf("converting %.40q to %s: %v (it takes a Postgres array or json)", text, v.Type(), err)
+	}
+	return nil
 }
 
 // scanError explains why column i didn't fit its field.

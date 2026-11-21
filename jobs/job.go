@@ -132,6 +132,10 @@ func At(t time.Time) Option { return func(o *enqueueOptions) { o.at = t } }
 
 // Unique makes the enqueue do nothing if a job of the same type with the
 // same args was enqueued within period and wasn't discarded or cancelled.
+// The args are every field's JSON, so jobs with different args are
+// distinct; a job that has completed still counts until period has
+// passed since it was enqueued, and the schedule (In, At) and queue
+// aren't part of the key.
 func Unique(period time.Duration) Option { return func(o *enqueueOptions) { o.unique = period } }
 
 // Enqueue adds a job in tx, the same transaction as the data change that

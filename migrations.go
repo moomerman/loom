@@ -80,8 +80,8 @@ func (a *App) checkMigrations(ctx context.Context) error {
 		}
 		install := fmt.Sprintf("run `loom db install %s`, then `loom migrate`", pkg)
 		if !hasDB {
-			return &Error{Code: RT433, Msg: fmt.Sprintf("%s keeps data in the app's database, but the app has none", who),
-				Fix: "give the app a Postgres database (loom.Config{DB: ...}, or app.UseDB in tests), then " + install}
+			return &Error{Code: RT433, Msg: fmt.Sprintf("%s keeps data in the app's database, but the app has none: loom.Config.DB is empty", who),
+				Fix: "set loom.Config{DB: os.Getenv(\"DATABASE_URL\")} and check that DATABASE_URL is set where the app runs (in tests, app.UseDB(loomtest.DB(t))); if its migrations aren't applied yet, " + install}
 		}
 		if applied == nil {
 			names, err := data.Select[string](ctx, a.db, `SELECT name FROM loom_migrations`)

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/moomerman/loom/jobs"
@@ -16,6 +17,9 @@ import (
 	"github.com/moomerman/loom/storage"
 	"github.com/moomerman/loom/trace"
 )
+
+// testSecret is Config.Secret's default under go test (App.Testing).
+const testSecret = "loom-test-secret-not-for-production-use"
 
 // Config configures an App; pass it to New. It is the one place an app
 // is configured: every field has a default, so the zero Config is an
@@ -53,7 +57,8 @@ type Config struct {
 	// BaseURL is the app's public address, such as
 	// https://app.example.com: where links in mail point and OAuth
 	// providers send the browser back. Outside dev, auth needs it
-	// (AU902).
+	// (AU902). Under go test, with Dev left unset, auth makes do
+	// without it as in dev (App.Testing).
 	BaseURL string
 	// TrustedProxies are the reverse proxies whose X-Forwarded-For and
 	// X-Forwarded-Proto headers the app believes: the client's address
@@ -66,6 +71,8 @@ type Config struct {
 	// characters from the environment, the same on every node, e.g.
 	// os.Getenv("LOOM_SECRET") made with `openssl rand -base64 32`.
 	// Changing it makes what was sealed with the old one unreadable.
+	// Under go test, with Dev left unset, it defaults to a fixed test
+	// secret (App.Testing).
 	Secret string
 	// CSP is the Content-Security-Policy every response carries;
 	// DefaultCSP unless set. The default allows only the app's own
@@ -220,6 +227,12 @@ func (cfg Config) withDefaults() (Config, error) {
 	if cfg.Secret != "" && len(cfg.Secret) < MinSecretLen {
 		return cfg, invalid("Secret", fmt.Sprintf("is %d characters, fewer than %d", len(cfg.Secret), MinSecretLen), "make one with `openssl rand -base64 32` and pass it from the environment, e.g. os.Getenv(\"LOOM_SECRET\")")
 	}
+	if cfg.Dev == DevFromEnv && testing.Testing() && cfg.Secret == "" {
+		// Under go test, an app that leaves Dev unset can seal values
+		// with no setup (App.Testing). A test of what happens without a
+		// secret sets Dev: loom.DevOff (or DevOn) to keep it empty.
+		cfg.Secret = testSecret
+	}
 	if cfg.InspectToken == "" {
 		cfg.InspectToken = os.Getenv("LOOM_INSPECT_TOKEN")
 	}
@@ -272,6 +285,14 @@ func (a *App) PubSub() pubsub.PubSub { return a.cfg.PubSub }
 
 // Dev reports whether the app runs in dev mode (Config.Dev).
 func (a *App) Dev() bool { return a.dev }
+
+// Testing reports whether the app was made under go test with
+// Config.Dev left unset (DevFromEnv). Such an app needs no production
+// settings in its tests: Secret defaults to a fixed test secret, and
+// sub-apps treat an empty BaseURL as they do in dev (auth's links and
+// callbacks use the request's origin, with no AU902). A test of the
+// production checks sets Dev: loom.DevOff.
+func (a *App) Testing() bool { return a.testing }
 
 // Title is the app's default document title (Config.Title).
 func (a *App) Title() string { return a.cfg.Title }

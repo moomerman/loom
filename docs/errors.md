@@ -755,7 +755,7 @@ A browser sent a POST (or PUT, PATCH, DELETE) from another site, so the app refu
 The sign-in session store failed, usually the database. With a database, sessions are kept in the `loom_user_sessions` table, one of Loom's migrations. Check the connection; a page load answers 500, and an open page restarts.
 
 ### RT433
-Loom's own migrations (its tables `loom_clients`, `loom_user_sessions`, `loom_rate_limits` and `loom_jobs`) aren't applied to the app's database, or a mounted sub-app keeps data in the app's database (it implements `loom.HasMigrations`) and its migrations aren't applied, or the app has no database. Run `loom db install <package>` (the error names it: `github.com/moomerman/loom` for Loom's), then `loom migrate`, and commit the copied migrations. `Run` refuses to start, and `loomtest.Mount` fails, until they are applied.
+Loom's own migrations (its tables `loom_clients`, `loom_user_sessions`, `loom_rate_limits` and `loom_jobs`) aren't applied to the app's database, or a mounted sub-app keeps data in the app's database (it implements `loom.HasMigrations`) and its migrations aren't applied, or the app has no database (`loom.Config.DB` is empty: usually `DATABASE_URL` isn't set where the app runs). Set the database first; for missing migrations, run `loom db install <package>` (the error names it: `github.com/moomerman/loom` for Loom's), then `loom migrate`, and commit the copied migrations. `Run` refuses to start, and `loomtest.Mount` fails, until they are applied.
 
 ## Jobs (JB)
 
@@ -993,7 +993,8 @@ Auth mails links or signs in with a provider, but the app's
 address, such as `loom.Config{BaseURL: os.Getenv("BASE_URL")}` (a
 malformed one is RT441). Links and provider
 callbacks are never built from the request's `Host` header outside
-dev, since the sender of a request chooses it.
+dev, since the sender of a request chooses it. Under `go test`, an app that leaves `Config.Dev`
+unset is treated as in dev (`app.Testing()`).
 
 ### AU903
 An `auth.Config` field is invalid: `AfterSignOut` isn't a path in the
@@ -1037,7 +1038,8 @@ in with a recovery code, or an operator turns their two-factor off
 
 ### AU909
 Two-factor sign-in is on, but `loom.Config.Secret` is empty outside
-dev. Authenticator secrets can't be hashed like passwords, so auth
+dev. (Under `go test`, an app that leaves `Config.Dev` unset has a
+test secret.) Authenticator secrets can't be hashed like passwords, so auth
 encrypts them with the app's secret, and a leaked database or backup
 doesn't give away anyone's second factor. Make one with `openssl rand
 -base64 32` and pass it from the environment, the same on every node:

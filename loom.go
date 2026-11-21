@@ -40,6 +40,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"testing"
 	"time"
 
 	"github.com/moomerman/loom/jobs"
@@ -307,6 +308,7 @@ type App struct {
 	cfg      Config // with defaults filled in (config.go)
 	dev      bool   // dev mode: Config.Dev, or LOOM_DEV
 	devEnv   bool   // dev mode came from LOOM_DEV, not the app's code
+	testing  bool   // made under go test with Config.Dev unset (App.Testing)
 	devToken string // LOOM_DEV_TOKEN: required on dev requests when set
 
 	db       *DB
@@ -410,6 +412,7 @@ func New(cfg ...Config) *App {
 	case DevFromEnv:
 		a.dev = os.Getenv("LOOM_DEV") == "1"
 		a.devEnv = a.dev
+		a.testing = testing.Testing()
 	}
 	if c.DB != "" {
 		a.openConfigDB(c.DB)
