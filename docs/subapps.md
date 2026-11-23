@@ -183,3 +183,22 @@ host's styling (`auth.md`).
 
 `loom routes --json` lists each route's full path with its `prefix`,
 `mount` (the sub-app's type), `auth` checks and `middleware` count.
+
+## The app dashboard
+
+`dashboard` is a sub-app that shows the app itself, for a person to
+keep open: an overview (uptime, live pages, actions and errors in the
+last minute, a five-minute chart, the busiest routes, the job queues),
+every route grouped by sub-app with links to open it, the event stream
+by kind, the SQL statements, and the open sessions. It is what `loom
+routes`, `loom stats`, `loom events`, `loom queries` and `loom
+sessions` show, in production too, and it links to the app's other
+sub-apps. It needs an auth check (RT415):
+
+```go
+admin.Mount("/admin/loom", dashboard.New(dashboard.Config{}))
+```
+
+It reads only what the app keeps in memory, refreshes open pages every
+`Config.Refresh` (two seconds), and leaves its own pages out of what it
+shows.
