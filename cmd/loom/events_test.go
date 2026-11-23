@@ -42,7 +42,7 @@ func TestEventsCommands(t *testing.T) {
 		t.Errorf("trace unknown: %d %q", code, out)
 	}
 	code, out, _ = runCmd(runStats, "--url", url)
-	if code != 0 || !strings.Contains(out, "1 live pages open") || !strings.Contains(out, "page.event") {
+	if code != 0 || !strings.Contains(out, "1 live pages open") || !strings.Contains(out, "page.event") || !strings.Contains(out, "memory: ") {
 		t.Errorf("stats: %d %q", code, out)
 	}
 	code, out, _ = runCmd(runQueries, "--url", url)

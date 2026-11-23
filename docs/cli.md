@@ -308,7 +308,7 @@ LOOM_INSPECT_TOKEN=... loom queries --url https://app.example.com
 
 The token reads what the app does and how it performs: `loom routes`,
 `manifest`, `sessions`, `errors`, `events` (and `trace`), `stats`,
-`queries`, `db stats`, the heap and goroutine profiles, `jobs` and `jobs inspect`, `queues`, `nodes`, `cron`, and
+`queries`, `db stats`, the heap, allocs and goroutine profiles (`loom pprof`), `jobs` and `jobs inspect`, `queues`, `nodes`, `cron`, and
 `doctor`'s app checks. Everything that shows a page's state (`loom
 inspect`'s assigns and HTML), renders, sends an event, reads the
 mailbox or storage, or changes a job answers 403 to it: those stay in
@@ -595,16 +595,33 @@ collector's runs and its longest recent pause, the browsers connected
 number that keeps growing between calls is a leak; `waits` growing
 means the pool is short of connections (`Config.DBMaxConns`).
 
+`runtime.memory` splits the process's memory as Go's runtime sees it
+(`runtime.MemStats`), in bytes: `rss_bytes` is the resident set the OS
+counts (Linux only, else 0); `heap_inuse_bytes` the heap's spans that
+hold objects; `heap_idle_bytes` the spans that hold none, of which
+`heap_released_bytes` went back to the OS and `heap_unreleased_bytes`
+(idle minus released) the runtime keeps for reuse, still resident;
+`stack_bytes` goroutine stacks; `next_gc_bytes` the heap size that
+triggers the next collection; `last_gc` when the last one finished;
+`limit_bytes` the soft memory limit (`GOMEMLIMIT`), absent without
+one. A process whose RSS grows with `heap_inuse_bytes` holds more live
+objects: take heap profiles (`loom pprof heap`) and compare them. One
+whose RSS grows while `heap_inuse_bytes` stays flat has freed memory
+the runtime hasn't returned yet: `heap_unreleased_bytes` grows.
+
 Dev mode also serves Go's profiler at `/_loom/dev/pprof/`:
 `go tool pprof http://localhost:4000/_loom/dev/pprof/profile` for 30
 seconds of CPU, and `heap`, `allocs`, `goroutine`, `block`, `mutex`
 and `trace`. The inspect token reads `heap`, `allocs` and
-`goroutine`; a CPU profile or trace costs while it runs, so those stay
-in dev.
+`goroutine` (`loom pprof`); a CPU profile or trace costs while it runs,
+and the command line can carry secrets, so those stay in dev.
 
 ```json
 {"started": "2026-10-13T14:00:00Z", "sessions": 3,
  "runtime": {"goroutines": 41, "heap_bytes": 9123840, "heap_objects": 51200, "sys_bytes": 24117248,
+   "memory": {"rss_bytes": 31457280, "heap_inuse_bytes": 11010048, "heap_idle_bytes": 8388608,
+     "heap_released_bytes": 6291456, "heap_unreleased_bytes": 2097152, "stack_bytes": 655360,
+     "next_gc_bytes": 18247680, "last_gc": "2026-10-13T14:05:12Z"},
    "gc_runs": 18, "gc_pause_ms": 0.3, "streams": 3,
    "db": {"max": 20, "open": 4, "in_use": 1, "idle": 3, "waits": 0, "wait_ms": 0}},
  "events": [
@@ -638,6 +655,36 @@ second. A line near the top whose `mean_ms` is small is a query that
 runs too often; one whose `rows` per call is large reads too much.
 After 500 distinct statements, the rest count as `other`. Use `loom db
 query` with `EXPLAIN` to see how one runs.
+
+### loom pprof
+
+```
+loom pprof [--json] [--out FILE] heap|allocs|goroutine
+                              GET /_loom/dev/pprof/NAME
+```
+
+Saves one of the app's Go profiles to a file for `go tool pprof`, which
+can't send a deployed app's inspect token itself. The file is
+`PROFILE-YYYYMMDD-HHMMSS.pb.gz` unless `--out` names one. `heap` asks
+for `?gc=1`, so the app collects garbage first and the profile shows
+what is live now. The command prints how to read the file:
+
+```
+go tool pprof -top -sample_index=inuse_space heap-20261013-140512.pb.gz
+go tool pprof -top -sample_index=inuse_space -diff_base=heap-20261013-130000.pb.gz heap-20261013-140512.pb.gz
+```
+
+The first lists live memory by the function that allocated it; the
+second, with an earlier profile as the base, only what grew between
+them, which is where a leak shows. `allocs` is everything allocated
+since the start (`-sample_index=alloc_space`), the churn the garbage
+collector works through; `goroutine` counts goroutines by stack, and a
+diff of two finds a goroutine leak. A CPU profile or trace runs only
+under `loom dev`: `go tool pprof http://localhost:4000/_loom/dev/pprof/profile`.
+
+```json
+{"profile": "heap", "file": "heap-20261013-140512.pb.gz", "bytes": 48213, "taken": "2026-10-13T14:05:12Z"}
+```
 
 ### loom mail
 

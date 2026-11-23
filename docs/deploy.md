@@ -126,7 +126,8 @@ its disk. `Run` checks the bucket before serving (SG002 to SG005).
 Set `LOOM_INSPECT_TOKEN` (`openssl rand -hex 32`) on the app, and the
 CLI's read-only commands work against it from anywhere with the same
 token: `loom stats`, `loom queries`, `loom events`, `loom errors`,
-`loom sessions`, `loom jobs`, `loom queues` and `loom nodes`, with
+`loom sessions`, `loom jobs`, `loom queues`, `loom nodes` and `loom
+pprof` (heap, allocs and goroutine profiles), with
 `--url https://app.example.com` (`cli.md`, "Asking a running app").
 The counts and the last 2000 events are each node's own, since the app
 started; ask each node by its own address to see them all.

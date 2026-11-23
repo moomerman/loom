@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -251,6 +252,10 @@ func TestDevEvents(t *testing.T) {
 	}
 	if stats.Runtime.Goroutines == 0 || stats.Runtime.HeapBytes == 0 {
 		t.Errorf("runtime = %+v", stats.Runtime)
+	}
+	if mem := stats.Runtime.Memory; mem.HeapInuseBytes == 0 || mem.NextGCBytes == 0 || mem.HeapUnreleasedBytes != mem.HeapIdleBytes-mem.HeapReleasedBytes ||
+		(runtime.GOOS == "linux" && mem.RSSBytes == 0) {
+		t.Errorf("memory = %+v", mem)
 	}
 	if code := getJSON(t, srv.URL+"/_loom/dev/pprof/goroutine?debug=1", nil); code != 200 {
 		t.Errorf("pprof goroutine = %d", code)

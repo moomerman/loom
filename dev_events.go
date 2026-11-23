@@ -2,10 +2,14 @@ package loom
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
+	"os"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/moomerman/loom/data"
@@ -34,16 +38,86 @@ type StatsResult struct {
 // number that only grows across `loom stats` calls is a leak; a pool
 // whose waits grow is short of connections (Config.DBMaxConns).
 type RuntimeInfo struct {
-	Goroutines  int    `json:"goroutines"`
-	HeapBytes   uint64 `json:"heap_bytes"` // allocated and still in use
-	HeapObjects uint64 `json:"heap_objects"`
-	SysBytes    uint64 `json:"sys_bytes"` // obtained from the OS
-	GCRuns      uint32 `json:"gc_runs"`
+	Goroutines  int        `json:"goroutines"`
+	HeapBytes   uint64     `json:"heap_bytes"` // allocated and still in use
+	HeapObjects uint64     `json:"heap_objects"`
+	SysBytes    uint64     `json:"sys_bytes"` // obtained from the OS
+	Memory      MemoryInfo `json:"memory"`
+	GCRuns      uint32     `json:"gc_runs"`
 	// GCPauseMS is the longest of the last 256 collections' pauses.
 	GCPauseMS float64 `json:"gc_pause_ms"`
 	Streams   int     `json:"streams"` // open SSE streams: browsers connected
 	// DB is the connection pool, absent without a database.
 	DB *DBPoolInfo `json:"db,omitempty"`
+}
+
+// MemoryInfo splits the process's memory the way the Go runtime sees
+// it, so a process that grows can be told apart: live objects the
+// program still holds (heap_inuse grows, and a heap profile shows
+// whose), or memory the program freed that the runtime keeps for
+// reuse rather than returning to the OS (heap_unreleased grows while
+// heap_inuse doesn't). The fields are runtime.MemStats', in bytes.
+type MemoryInfo struct {
+	// RSSBytes is the process's resident set as the OS counts it, read
+	// from /proc/self/statm; 0 where there is none (not Linux).
+	RSSBytes uint64 `json:"rss_bytes"`
+	// HeapInuseBytes are the heap's spans holding objects: live ones and
+	// garbage not yet swept (MemStats.HeapInuse).
+	HeapInuseBytes uint64 `json:"heap_inuse_bytes"`
+	// HeapIdleBytes are the heap's spans holding nothing (HeapIdle),
+	// of which HeapReleasedBytes went back to the OS and
+	// HeapUnreleasedBytes (idle minus released) the runtime still keeps
+	// mapped: resident, counted in RSS, but free to reuse.
+	HeapIdleBytes       uint64 `json:"heap_idle_bytes"`
+	HeapReleasedBytes   uint64 `json:"heap_released_bytes"`
+	HeapUnreleasedBytes uint64 `json:"heap_unreleased_bytes"`
+	StackBytes          uint64 `json:"stack_bytes"` // goroutine stacks (StackInuse)
+	// NextGCBytes is the heap size at which the next collection runs.
+	NextGCBytes uint64 `json:"next_gc_bytes"`
+	// LastGC is when the last collection finished; absent before one.
+	LastGC *time.Time `json:"last_gc,omitempty"`
+	// LimitBytes is the soft memory limit (GOMEMLIMIT,
+	// debug.SetMemoryLimit); absent when there is none.
+	LimitBytes uint64 `json:"limit_bytes,omitempty"`
+}
+
+// memoryInfo reads m and the OS's view of the process.
+func memoryInfo(m *runtime.MemStats) MemoryInfo {
+	mi := MemoryInfo{
+		RSSBytes:            residentBytes(),
+		HeapInuseBytes:      m.HeapInuse,
+		HeapIdleBytes:       m.HeapIdle,
+		HeapReleasedBytes:   m.HeapReleased,
+		HeapUnreleasedBytes: m.HeapIdle - m.HeapReleased,
+		StackBytes:          m.StackInuse,
+		NextGCBytes:         m.NextGC,
+	}
+	if m.LastGC != 0 {
+		t := time.Unix(0, int64(m.LastGC)).UTC()
+		mi.LastGC = &t
+	}
+	if limit := debug.SetMemoryLimit(-1); limit != math.MaxInt64 { // -1 reads the limit without changing it
+		mi.LimitBytes = uint64(limit)
+	}
+	return mi
+}
+
+// residentBytes is the process's resident set size on Linux, from
+// /proc/self/statm (its second field, in pages), or 0.
+func residentBytes() uint64 {
+	b, err := os.ReadFile("/proc/self/statm")
+	if err != nil {
+		return 0
+	}
+	f := strings.Fields(string(b))
+	if len(f) < 2 {
+		return 0
+	}
+	pages, err := strconv.ParseUint(f[1], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return pages * uint64(os.Getpagesize())
 }
 
 // DBPoolInfo is database/sql's view of the app's connection pool.
@@ -137,7 +211,7 @@ func (a *App) Stats() StatsResult {
 func (a *App) runtimeInfo() RuntimeInfo {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	info := RuntimeInfo{Goroutines: runtime.NumGoroutine(), HeapBytes: m.HeapAlloc, HeapObjects: m.HeapObjects, SysBytes: m.Sys, GCRuns: m.NumGC}
+	info := RuntimeInfo{Goroutines: runtime.NumGoroutine(), HeapBytes: m.HeapAlloc, HeapObjects: m.HeapObjects, SysBytes: m.Sys, Memory: memoryInfo(&m), GCRuns: m.NumGC}
 	var pause uint64
 	for _, p := range m.PauseNs {
 		pause = max(pause, p)

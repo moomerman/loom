@@ -202,6 +202,7 @@ func runStats(args []string, stdout, stderr io.Writer) int {
 			rt := r.Runtime
 			fmt.Fprintf(w, "%d goroutines, %s heap in %d objects (%s from the OS), %d GCs (longest recent pause %.1f ms), %d browsers connected\n",
 				rt.Goroutines, bytesText(int64(rt.HeapBytes)), rt.HeapObjects, bytesText(int64(rt.SysBytes)), rt.GCRuns, rt.GCPauseMS, rt.Streams)
+			printMemory(w, rt.Memory)
 			if db := rt.DB; db != nil {
 				fmt.Fprintf(w, "database pool: %d of %d open, %d in use, %d idle; %d waits for a connection (%.1f ms)\n", db.Open, db.Max, db.InUse, db.Idle, db.Waits, db.WaitMS)
 			}
@@ -219,6 +220,26 @@ func runStats(args []string, stdout, stderr io.Writer) int {
 			return tw.Flush()
 		}, err
 	})
+}
+
+// printMemory prints the process's memory as the runtime splits it:
+// what live objects use, what it keeps free, and what it gave back.
+func printMemory(w io.Writer, m loom.MemoryInfo) {
+	rss := "resident size unknown"
+	if m.RSSBytes > 0 {
+		rss = bytesText(int64(m.RSSBytes)) + " resident"
+	}
+	last := "no GC yet"
+	if m.LastGC != nil {
+		last = "last GC " + time.Since(*m.LastGC).Round(time.Second).String() + " ago"
+	}
+	limit := "no memory limit"
+	if m.LimitBytes > 0 {
+		limit = "memory limit " + bytesText(int64(m.LimitBytes))
+	}
+	fmt.Fprintf(w, "memory: %s; heap %s in use, %s idle of which %s kept and %s returned to the OS; stacks %s; next GC at %s heap, %s, %s\n",
+		rss, bytesText(int64(m.HeapInuseBytes)), bytesText(int64(m.HeapIdleBytes)), bytesText(int64(m.HeapUnreleasedBytes)),
+		bytesText(int64(m.HeapReleasedBytes)), bytesText(int64(m.StackBytes)), bytesText(int64(m.NextGCBytes)), last, limit)
 }
 
 // timings formats a summary's mean, p95 and max, or dashes if nothing

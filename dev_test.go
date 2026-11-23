@@ -113,11 +113,18 @@ func TestInspectToken(t *testing.T) {
 		{"GET", "/_loom/dev/errors", token, 200},
 		{"GET", "/_loom/dev/routes", token, 200},
 		{"GET", "/_loom/dev/pprof/heap", token, 200},
+		{"GET", "/_loom/dev/pprof/heap?gc=1", token, 200}, // what `loom pprof heap` asks for
+		{"GET", "/_loom/dev/pprof/heap", "", 404},
+		{"GET", "/_loom/dev/pprof/allocs", token, 200},
+		{"GET", "/_loom/dev/pprof/goroutine?debug=2", token, 200},
 		{"GET", "/_loom/dev/jobs", token, 200},
 		{"GET", "/_loom/dev/queues", token, 200},
 		{"GET", "/_loom/dev/nodes", token, 200},
 		{"GET", "/_loom/dev/cron", token, 200},
 		{"GET", "/_loom/dev/pprof/profile", token, 403},
+		{"GET", "/_loom/dev/pprof/", token, 403},
+		{"GET", "/_loom/dev/pprof/cmdline", token, 403}, // the command line can carry secrets
+		{"GET", "/_loom/dev/pprof/trace", token, 403},
 		{"GET", "/_loom/dev/sessions/abc", token, 403}, // assigns and HTML
 		{"POST", "/_loom/dev/sessions/abc/event", token, 403},
 		{"POST", "/_loom/dev/render", token, 403},
