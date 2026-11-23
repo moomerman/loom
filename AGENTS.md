@@ -87,6 +87,7 @@ jobs/              background jobs: runner, memory store, cron (docs/jobs.md)
   jobstest/        conformance suite every jobs.Store must pass
 pgjobs/            Postgres jobs store
 jobsweb/           the jobs dashboard, a mountable sub-app; the reference example
+dashboard/         the app dashboard: routes, activity, queries and sessions, a mountable sub-app
 auth/              the sign-in sub-app: passwords, email links, resets, Google, GitHub (docs/auth.md)
 devmail/           the dev mailbox, a sub-app served only in dev: mail kept instead of sent, live
 examples/todo/     the example app
@@ -112,7 +113,7 @@ docs/              the reference docs, embedded for `loom docs`; llms.txt lists 
    deps are fine. Go 1.26+.
 6. `client/loom.js` is hand-written, no build step, < 8 KB minified.
 7. Compile errors are excellent: file, line, column, excerpt, plain English.
-8. Sub-apps (`auth`, `jobsweb`, `devmail`) use only Loom's public API;
+8. Sub-apps (`auth`, `jobsweb`, `dashboard`, `devmail`) use only Loom's public API;
    anything they need becomes public API.
 
 ## Agent ergonomics
